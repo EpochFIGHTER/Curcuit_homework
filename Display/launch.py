@@ -30,7 +30,11 @@ def show_start_window(ms):
     icon.size = (128, 128)
     icon.join(u.root)
 
+<<<<<<< HEAD
     main_title = fantas.Text("三独立节点电路通用 - 正弦稳态分析器", fonts['shuhei'], textstyle.DARKBLUE_TITLE_3, midleft=(bottom_box.rect.h, bottom_box.rect.top + bottom_box.rect.h / 4))
+=======
+    main_title = fantas.Text("三独立节点电路 - 正弦稳态分析器", fonts['shuhei'], textstyle.DARKBLUE_TITLE_3, midleft=(bottom_box.rect.h, bottom_box.rect.top + bottom_box.rect.h / 4))
+>>>>>>> 39c291a (初步搭建界面)
     main_title.join(u.root)
 
     sub_title = fantas.Text("山东大学 2024-2025 学年 24级 电路课程设计作业", fonts['shuhei'], textstyle.DARKBLUE_TITLE_5, midleft=(bottom_box.rect.h, bottom_box.rect.top + bottom_box.rect.h / 2))
@@ -43,4 +47,7 @@ def show_start_window(ms):
     
     pygame.time.set_timer(pygame.QUIT, ms, 1)
     u.mainloop(quit)
+<<<<<<< HEAD
 from Core.Component import node_0, node_1, node_2, node_3
+=======
+>>>>>>> 39c291a (初步搭建界面)

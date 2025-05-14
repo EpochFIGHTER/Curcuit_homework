@@ -5,8 +5,8 @@ import math
 if __name__ == "__main__":
     from topology import Node, Branch, Component
 else:
-    from topology import Node, Branch, Component
-import numpy as np # type: ignore
+    from Core.topology import Node, Branch, Component
+
 
 def intelligent_output(value, unit_table : list[str], unit_k) -> tuple[float, str]:
     '''
@@ -22,7 +22,7 @@ def intelligent_output(value, unit_table : list[str], unit_k) -> tuple[float, st
             break
     v = value
     if value < 1:
-        while i > 0:
+        while i >= 0:
             i -= 1
             v = unit_k[i] * value
             if v >= 1:
@@ -38,8 +38,8 @@ def intelligent_output(value, unit_table : list[str], unit_k) -> tuple[float, st
     return v, unit_table[i]
 
 # 电压单位表
-V_table = ['mV', 'V', 'kV', 'MV']
-V_k = [1e3, 1, 1e-3, 1e-6]
+V_table = ['mV', 'V', 'kV']
+V_k = [1e3, 1, 1e-3]
 # 电流单位表
 I_table = ['μA', 'mA', 'A', 'kA']
 I_k = [1e6, 1e3, 1, 1e-3]
@@ -70,24 +70,14 @@ def set_freq(freq : float):
 set_freq(1000)    # 默认频率为 1kHz
 
 class ElectricalNode(Node):
-    """
-    电气节点类，继承自基础节点类。
-    增加了电气属性（电压、连接支路）。
-    支持多支路并联。
-    """
-    def __init__(self, num: int):
-        super().__init__(num)
-        self._V = None  # 节点电压
-        self.branches = {}  # 记录与本节点相连的所有支路，键为对端节点，值为支路列表
+    '''
+    @brief 电气节点类
+    @detail 继承自节点类，增加了电气属性
+    '''
 
-    def add_branch(self, branch):
-        """
-        添加连接到该节点的支路。支持多支路并联。
-        """
-        other_node = branch.node_left if branch.node_right == self else branch.node_right
-        if other_node not in self.branches:
-            self.branches[other_node] = []
-        self.branches[other_node].append(branch)
+    def __init__(self, num : int):
+        super().__init__(num)
+        self._V = None
 
     def _get_V(self):
         return self._V
@@ -103,53 +93,27 @@ class ElectricalNode(Node):
             return f"Node{self.num}"
 
 class ElectricalBranch(Branch):
-    """
-    电气支路类，继承自基础支路类。
-    增加了电气属性，支持多元件串联。
-    """
-    def __init__(self, node1: ElectricalNode, node2: ElectricalNode):
+    '''
+    @brief 电气支路类
+    @detail 继承自支路类，增加了电气属性
+    '''
+    
+    def __init__(self, node1 : ElectricalNode, node2 : ElectricalNode):
         super().__init__(node1, node2)
-        self._I = None  # 支路电流
-        self._V1 = None # 左节点电势
-        self._V2 = None # 右节点电势
-        self.components = []  # 支路上的所有元件
-        node1.add_branch(self)
-        node2.add_branch(self)
-
-    def append(self, component):
-        """
-        向支路添加一个元件（串联）。
-        """
-        self.components.append(component)
-
-    def __iter__(self):
-        """
-        支持for循环遍历支路上的所有元件。
-        """
-        return iter(self.components)
-
-    def __contains__(self, component_class):
-        """
-        判断支路上是否包含某种类型的元件。
-        """
-        return any(isinstance(c, component_class) for c in self.components)
+        self._I = None
+        self._V1 = None
+        self._V2 = None
 
     def _get_Z(self):
-        # 计算支路总阻抗（所有元件串联）
         z = 0
         for c in self:
-            if hasattr(c, 'Z') and c.Z is not None:
-                z += c.Z
+            z += c.Z
         return z
-    Z = property(_get_Z)
+    Z : complex = property(_get_Z)    # 支路总阻抗，只读
 
     def _get_Y(self):
-        # 计算支路总导纳
-        z = self.Z
-        if z == 0:
-            return complex(0, 0)
-        return 1 / z
-    Y = property(_get_Y)    # 支路总导纳，只读
+        return 1 / self.Z
+    Y : complex = property(_get_Y)    # 支路总导纳，只读
 
     def _get_I(self):
         return self._I
@@ -376,6 +340,7 @@ class Capacitor(Impedance):
         return self._C
     def _set_C(self, C):
         self._C = C
+        self.Z = 1 / (1j * C)
     C = property(_get_C, _set_C)    # 电容
 
     def _get_Z(self):
@@ -403,6 +368,7 @@ class Inductor(Impedance):
         return self._L
     def _set_L(self, L):
         self._L = L
+        self.Z = 1j * L
     L = property(_get_L, _set_L)     # 电感
 
     def _get_Z(self):
@@ -416,31 +382,37 @@ class Inductor(Impedance):
         else:
             return f"{self.prefix}{self.num}"
 
+node_ref = ElectricalNode(0)    # 参考节点
+node_ref.V = 0    # 参考节点电压为0
+node_1 = ElectricalNode(1)    # 节点1
+node_2 = ElectricalNode(2)    # 节点2
+node_3 = ElectricalNode(3)    # 节点3
 
-# 模块测试代码，仅在直接运行模块时执行
 if __name__ == "__main__":
-    # 创建示例电路
-    node_0 = ElectricalNode(0)    # 参考节点
-    node_0.V = 0                  # 参考节点电压为0
-    node_1 = ElectricalNode(1)    # 节点1
-    node_2 = ElectricalNode(2)    # 节点2
-    node_3 = ElectricalNode(3)    # 节点3
-    nodes = [node_0, node_1, node_2, node_3]
-    
-    # 测试支路创建
-    b1 = ElectricalBranch(node_0, node_1)
-    vs = IndependentVoltageSource(b1)
-    vs.U = 5
-    b1.append(vs)
-    
-    r1 = Resistor(ElectricalBranch(node_1, node_2))
-    r1.R = 1000
-    r1.branch.append(r1)
-    
-    # 测试打印组件信息
-    print("电气拓扑测试：")
-    print(node_0)
+    # 测试
+    print(intelligent_output(0.5, V_table, V_k))
+    print(intelligent_output(1.5, V_table, V_k))
+    print(intelligent_output(1500, V_table, V_k))
+    print(intelligent_output(1e-6, C_table, C_k))
+    print(intelligent_output(1e-3, C_table, C_k))
+    print(intelligent_output(3.257e3, R_table, R_k))
+    i = Impedance(None)
+    i.Z = 1 + 2j
+    print(i)
+    n = ElectricalNode(1)
+    n.V = 1320
+    print(n)
+
+    node_1 = ElectricalNode(1)
+    node_2 = ElectricalNode(2)
+    branch = ElectricalBranch(node_1, node_2)
+    r = Resistor(branch)
+    r.R = 5
+    branch.append(r)
+
     print(node_1)
-    print(b1)
-    for c in b1:
-        print(c)
+    print(node_2)
+    print(branch)
+    print(r)
+
+    print(Resistor in branch)

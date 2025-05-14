@@ -78,7 +78,6 @@ class ProjectNameWidget(fantas.InputLineWidget):
         super().textedit(text, start)
         self.ui.update_size()
         self.ui.mark_update()
-
     def textinput(self, text):
         super().textinput(text)
         self.ui.update_size()
