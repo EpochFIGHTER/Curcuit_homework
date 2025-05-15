@@ -22,7 +22,7 @@ def intelligent_output(value, unit_table : list[str], unit_k) -> tuple[float, st
             break
     v = value
     if value < 1:
-        while i >= 0:
+        while i > 0:
             i -= 1
             v = unit_k[i] * value
             if v >= 1:
@@ -38,8 +38,8 @@ def intelligent_output(value, unit_table : list[str], unit_k) -> tuple[float, st
     return v, unit_table[i]
 
 # 电压单位表
-V_table = ['mV', 'V', 'kV']
-V_k = [1e3, 1, 1e-3]
+V_table = ['mV', 'V', 'kV', 'MV']
+V_k = [1e3, 1, 1e-3, 1e-6]
 # 电流单位表
 I_table = ['μA', 'mA', 'A', 'kA']
 I_k = [1e6, 1e3, 1, 1e-3]
@@ -382,37 +382,52 @@ class Inductor(Impedance):
         else:
             return f"{self.prefix}{self.num}"
 
-node_ref = ElectricalNode(0)    # 参考节点
-node_ref.V = 0    # 参考节点电压为0
+node_0 = ElectricalNode(0)    # 参考节点
+node_0.V = 0                  # 参考节点电压为0
 node_1 = ElectricalNode(1)    # 节点1
 node_2 = ElectricalNode(2)    # 节点2
 node_3 = ElectricalNode(3)    # 节点3
+nodes = [node_0, node_1, node_2, node_3]
+
+# 以下为测试用的电路结构搭建
+b = ElectricalBranch(node_0, node_1)
+c = IndependentVoltageSource(b)
+b.append(c)
+c.U = 100
+b = ElectricalBranch(node_0, node_2)
+c = Resistor(b)
+c.R = 1
+b.append(c)
+c = IndependentVoltageSource(b)
+c.U = 90
+b.append(c)
+b = ElectricalBranch(node_0, node_3)
+c = Resistor(b)
+c.R = 1
+b.append(c)
+c = IndependentCurrentSource(b)
+c.I = 20
+b.append(c)
+b = ElectricalBranch(node_1, node_2)
+c = IndependentVoltageSource(b)
+c.U = 110
+b.append(c)
+b = ElectricalBranch(node_1, node_3)
+c = Resistor(b)
+c.R = 2
+b.append(c)
+b = ElectricalBranch(node_2, node_3)
+c = Resistor(b)
+c.R = 2
+b.append(c)
+del b, c
 
 if __name__ == "__main__":
     # 测试
-    print(intelligent_output(0.5, V_table, V_k))
-    print(intelligent_output(1.5, V_table, V_k))
-    print(intelligent_output(1500, V_table, V_k))
-    print(intelligent_output(1e-6, C_table, C_k))
-    print(intelligent_output(1e-3, C_table, C_k))
-    print(intelligent_output(3.257e3, R_table, R_k))
-    i = Impedance(None)
-    i.Z = 1 + 2j
-    print(i)
-    n = ElectricalNode(1)
-    n.V = 1320
-    print(n)
-
-    node_1 = ElectricalNode(1)
-    node_2 = ElectricalNode(2)
-    branch = ElectricalBranch(node_1, node_2)
-    r = Resistor(branch)
-    r.R = 5
-    branch.append(r)
-
-    print(node_1)
-    print(node_2)
-    print(branch)
-    print(r)
-
-    print(Resistor in branch)
+    print("电气拓扑结构：")
+    for i in range(0, 3):
+        for j in range(i + 1, 4):
+            for b in nodes[i].branches[nodes[j]]:
+                print(b)
+                for c in b:
+                    print(c)

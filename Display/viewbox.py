@@ -89,7 +89,7 @@ class ProjectNameBox(fantas.InputLine):
         super().__init__((0, self.HEIGHT), u.fonts['deyi'], self.STYLE, textstyle.DARKBLUE_TITLE_2, maxinput=32, bd=2, sc=color.GRAY, bg=color.LIGHTWHITE, radius={"border_radius": 16}, mousewidget=ProjectNameMouseWidget, inputwidget=ProjectNameWidget, **anchor)
         self.set_text("新建电路图")
         self.anchor = 'right'
-    
+
     def set_text(self, text):
         self.inputwidget.start_input()
         self.inputwidget.textinput(text)
@@ -131,6 +131,18 @@ export_button.bind(export_diagram)
 export_button.join(viewbox)
 export_icon = fantas.IconText(chr(0xe622), u.fonts['iconfont'], textstyle.DARKBLUE_TITLE_2, center=(export_button.rect.w/2, export_button.rect.h/2))
 export_icon.join(export_button)
+
+def build_new_diagram():
+    pass
+
+buildnew_button = fantas.SmoothColorButton((ProjectNameBox.HEIGHT, ProjectNameBox.HEIGHT), buttonstyle.edit_name_button_style, 2, radius={'border_radius': 16}, midleft=(export_button.rect.right + project_name.PADDING, project_name.rect.centery))
+buildnew_button.bind(build_new_diagram)
+buildnew_button.join(viewbox)
+buildnew_icon = fantas.IconText(chr(0xe60f), u.fonts['iconfont'], textstyle.DARKBLUE_TITLE_2, center=(buildnew_button.rect.w/2, buildnew_button.rect.h/2))
+buildnew_icon.join(buildnew_button)
+
+class NumberInputLine(fantas.InputLine):
+    pass
 
 def layout():
     viewbox.join(u.root)
