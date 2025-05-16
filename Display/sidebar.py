@@ -1,5 +1,5 @@
 import pygame
-from pathlib import Path
+# from pathlib import Path
 
 import fantas
 from fantas import uimanager as u
@@ -7,6 +7,9 @@ from fantas import uimanager as u
 import Display.color as color
 import Display.textstyle as textstyle
 import Display.buttonstyle as buttonstyle
+from Display.viewbox import viewbox
+
+from Core.Component import nodes
 
 SIDEBAR_LEFT = u.WIDTH / 4 * 3
 
@@ -156,3 +159,151 @@ fantas.Text("Numpy 2.2.5", u.fonts['deyi'], textstyle.DARKBLUE_TITLE_3, midright
 fantas.Label((about_padding * 3, 10), bg=color.DEEPWHITE, center=(about.page.rect.w / 2, about_padding * 4 + about_lineheight * 14)).join(about.page)
 fantas.IconText(chr(0xe85a), u.fonts['iconfont'], textstyle.DARKBLUE_TITLE_3, midleft=(about_padding / 2, about_padding * 4 + about_lineheight * 15)).join(about.page)
 fantas.WebURL("Github仓库", "https://github.com/EpochFIGHTER/Curcuit_homework", u.fonts['deyi'], textstyle.DARKBLUE_TITLE_3, midleft=(about_padding / 2 + about_lineheight, about_padding * 4 + about_lineheight * 15)).join(about.page)
+
+
+PAGEWIDTH = u.WIDTH / 4
+PAGEHEIGHT = u.HEIGHT
+LISTPADDING = 20
+
+branch_list = fantas.Label((PAGEWIDTH, 0))
+branch_list.join(structure.page)
+branch_list.anchor = 'topleft'
+
+def update_list(extra_height=0):
+    h = extra_height
+    k : fantas.Ui
+    for k in branch_list.kidgroup:
+        h += k.rect.h
+    if h + LISTPADDING * 2 > branch_list.rect.h:
+        branch_list.set_size((PAGEWIDTH, h + LISTPADDING * 2))
+
+class AddBranchButtonMouseWidget(fantas.MouseBase):
+    def __init__(self, ui):
+        super().__init__(ui, 2)
+        self.pressed_node = None
+        self.released_node = None
+        self.line : list = []
+
+    def draw_branch(self):
+        for i in self.ui.choose_nodes:
+            i.style['fgcolor'] = color.GRAY
+        if self.pressed_node is not None:
+            self.ui.choose_nodes[self.pressed_node].style['fgcolor'] = color.DARKBLUE
+        if self.released_node is not None:
+            self.ui.choose_nodes[self.released_node].style['fgcolor'] = color.DARKBLUE
+        for i in self.ui.choose_nodes:
+            i.update_img()
+        if self.line:
+            for i in self.line:
+                i.leave()
+            self.line.clear()
+        if self.pressed_node != self.released_node and self.pressed_node is not None and self.released_node is not None:
+            if self.pressed_node > self.released_node:
+                pressed_node, released_node = self.released_node, self.pressed_node
+            else:
+                pressed_node, released_node = self.pressed_node, self.released_node
+            d = released_node - pressed_node
+            if d == 1:
+                l = fantas.Label((self.ui.rect.w / 4 - 16, 4), bg=color.DARKBLUE, center=(self.ui.rect.w / 4 * (pressed_node + 1), self.ui.HEIGHT * 3 / 2))
+                l.join(self.ui)
+                self.line.append(l)
+            elif d > 1:
+                l = fantas.Label((4, 16), bg=color.DARKBLUE, radius={'border_bottom_left_radius': 2, 'border_bottom_right_radius': 2}, midtop=(self.ui.rect.w / 8 * (pressed_node * 2 + 1), self.ui.HEIGHT * 3 / 2 + 8))
+                l.join(self.ui)
+                self.line.append(l)
+                l = fantas.Label((4, 16), bg=color.DARKBLUE, radius={'border_bottom_left_radius': 2, 'border_bottom_right_radius': 2}, midtop=(self.ui.rect.w / 8 * (released_node * 2 + 1), self.ui.HEIGHT * 3 / 2 + 8))
+                l.join(self.ui)
+                self.line.append(l)
+                l = fantas.Label((self.ui.rect.w / 4 * d, 4), bg=color.DARKBLUE, radius={'border_bottom_left_radius': 2, 'border_bottom_right_radius': 2}, midleft=(self.ui.rect.w / 8 * (pressed_node * 2 + 1), self.ui.HEIGHT * 3 / 2 + 24))
+                l.join(self.ui)
+                self.line.append(l)
+
+    def mousepress(self, pos, button):
+        if button == pygame.BUTTON_LEFT and self.ui.status == 1:
+            if not self.mouseon:
+                self.ui.hide_choose_branch()
+            elif self.ui.HEIGHT < pos[1] < self.ui.HEIGHT * 2:
+                i = int(pos[0] / (self.ui.rect.w / 4))
+                self.pressed_node = i
+                self.draw_branch()
+
+    def mousemove(self, pos):
+        if self.ui.status == 1 and self.pressed_node is not None:
+            i = int(pos[0] / (self.ui.rect.w / 4))
+            if  0 <= i < 4 and i != self.released_node:
+                self.released_node = i
+                self.draw_branch()
+
+    def mouserelease(self, pos, button):
+        if button == pygame.BUTTON_LEFT and self.ui.status == 1:
+            if self.pressed_node is None and self.released_node is None:
+                return
+            if self.pressed_node is not None and self.released_node is not None:
+                if self.pressed_node > self.released_node:
+                    pressed_node, released_node = self.released_node, self.pressed_node
+                else:
+                    pressed_node, released_node = self.pressed_node, self.released_node
+                if pressed_node != released_node:
+                    self.ui.add_choose_node(pressed_node, released_node)
+            if self.pressed_node is not None:
+                self.pressed_node = None
+            if self.released_node is not None:
+                self.released_node = None
+            self.draw_branch()
+
+class AddBranchButton(fantas.SmoothColorButton):
+    HEIGHT = 80
+    BG = color.LIGHTGREEN
+    OFFSETCOLOR = pygame.Color(30, 30, 30, 0)
+
+    def __init__(self, **anchor):
+        super().__init__((PAGEWIDTH - LISTPADDING * 2, self.HEIGHT), buttonstyle.add_branch_list_button_style, 2, radius={'border_radius': 16}, **anchor)
+        self.anchor = 'midtop'
+        self.bind(self.show_choose_branch)
+        self.banned_mousewidget = AddBranchButtonMouseWidget(self)
+        self.status = 0
+        
+        self.add_icon = fantas.IconText(chr(0xe620), u.fonts['iconfont'], textstyle.GRAY_TITLE_3, center=(self.rect.w / 2, self.rect.h / 2))
+        self.add_icon.join(self)
+        self.add_text = fantas.Text("选择支路节点", u.fonts['deyi'], textstyle.GRAY_TITLE_3, center=(self.rect.w / 2, self.rect.h / 2))
+        self.choose_nodes = []
+        for i in range(4):
+            self.choose_nodes.append(fantas.IconText(chr(0xe6b5), u.fonts['iconfont'], dict(textstyle.GRAY_TITLE_3), center=(self.rect.w / 8 * (i * 2 + 1), self.rect.h / 2 * 3)))
+
+        self.size_kf = fantas.LabelKeyFrame(self, 'size', (PAGEWIDTH - LISTPADDING * 2, self.HEIGHT * 2), 10, fantas.harmonic_curve)
+    
+    def add_choose_node(self, node1, node2):
+        self.hide_choose_branch()
+
+    def show_choose_branch(self):
+        self.ban()
+        self.status = 1
+        self.banned_mousewidget.mouseon = True
+        self.size_kf.value = (PAGEWIDTH - LISTPADDING * 2, self.HEIGHT * 2)
+        self.size_kf.launch('continue')
+        self.add_icon.leave()
+        self.add_text.join(self)
+        for i in self.choose_nodes:
+            i.join(self)            
+    
+    def hide_choose_branch(self):
+        self.status = 0
+        self.recover()
+        self.size_kf.value = (PAGEWIDTH - LISTPADDING * 2, self.HEIGHT)
+        self.size_kf.launch('continue')
+        self.add_icon.join(self)
+        self.add_text.leave()
+        for i in self.choose_nodes:
+            i.leave()
+
+    def ban(self):
+        super().ban()
+        self.banned_mousewidget.apply_event()
+    
+    def recover(self):
+        super().recover()
+        self.banned_mousewidget.cancel_event()
+
+add_branch_button = AddBranchButton(midtop=(PAGEWIDTH / 2, LISTPADDING))
+add_branch_button.join(branch_list)
+update_list(AddBranchButton.HEIGHT)

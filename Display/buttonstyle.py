@@ -1,7 +1,8 @@
 import pygame
 import Display.color as color
 
-offset = pygame.Color(50, 50, 50, 0)
+offset_large = pygame.Color(50, 50, 50, 0)
+offset_small = pygame.Color(30, 30, 30, 0)
 
 common_button_style = {
     'origin_bg': color.LIGHTWHITE,
@@ -12,9 +13,21 @@ common_button_style = {
     'hover_sc': color.GRAY,
     'hover_bd': 2,
 
-    'press_bg': color.GRAY - offset,
+    'press_bg': color.GRAY - offset_large,
     'press_sc': color.GRAY,
     'press_bd': 2,
 }
 
-del pygame, offset, color
+add_branch_list_button_style = {
+    'origin_bg': color.LIGHTGREEN,
+    'origin_sc': color.DEEPWHITE,
+    'origin_bd': 2,
+
+    'hover_bg': color.LIGHTGREEN + offset_small,
+
+    'press_bg': color.LIGHTGREEN - offset_small,
+
+    'ban_bg': color.LIGHTGREEN,
+}
+
+del pygame, offset_large, color
