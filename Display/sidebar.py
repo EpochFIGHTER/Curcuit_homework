@@ -165,17 +165,34 @@ PAGEWIDTH = u.WIDTH / 4
 PAGEHEIGHT = u.HEIGHT
 LISTPADDING = 20
 
-branch_list = fantas.Label((PAGEWIDTH, 0))
-branch_list.join(structure.page)
-branch_list.anchor = 'topleft'
+class BranchList(fantas.Label):
+    def __init__(self):
+        super().__init__((PAGEWIDTH, LISTPADDING * 2))
+        self.anchor = 'topleft'
 
-def update_list(extra_height=0):
-    h = extra_height
-    k : fantas.Ui
-    for k in branch_list.kidgroup:
-        h += k.rect.h
-    if h + LISTPADDING * 2 > branch_list.rect.h:
-        branch_list.set_size((PAGEWIDTH, h + LISTPADDING * 2))
+    def append(self, node):
+        super().append(node)
+        self.set_size((PAGEWIDTH, self.rect.h + node.MAX_HEIGHT))
+
+    def remove(self, node):
+        super().remove(node)
+        self.set_size((PAGEWIDTH, self.rect.h - node.MAX_HEIGHT))
+
+    def insert(self, node, index):
+        super().insert(node, index)
+        self.set_size((PAGEWIDTH, self.rect.h + node.MAX_HEIGHT))
+        if index < 0:
+            index = len(self.kidgroup) + index
+        self.move(index, node.size_kf.value[1])
+
+    def move(self, index, distance):
+        for k in self.kidgroup[index:]:
+            k.top_kf.value += distance
+            k.top_kf.launch('continue')
+
+branch_list = BranchList()
+branch_list.join(structure.page)
+
 
 class AddBranchButtonMouseWidget(fantas.MouseBase):
     def __init__(self, ui):
@@ -224,8 +241,9 @@ class AddBranchButtonMouseWidget(fantas.MouseBase):
                 self.ui.hide_choose_branch()
             elif self.ui.HEIGHT < pos[1] < self.ui.HEIGHT * 2:
                 i = int(pos[0] / (self.ui.rect.w / 4))
-                self.pressed_node = i
-                self.draw_branch()
+                if 0 <= i < 4:
+                    self.pressed_node = i
+                    self.draw_branch()
 
     def mousemove(self, pos):
         if self.ui.status == 1 and self.pressed_node is not None:
@@ -253,6 +271,7 @@ class AddBranchButtonMouseWidget(fantas.MouseBase):
 
 class AddBranchButton(fantas.SmoothColorButton):
     HEIGHT = 80
+    MAX_HEIGHT = HEIGHT * 2
     BG = color.LIGHTGREEN
     OFFSETCOLOR = pygame.Color(30, 30, 30, 0)
 
@@ -271,8 +290,10 @@ class AddBranchButton(fantas.SmoothColorButton):
             self.choose_nodes.append(fantas.IconText(chr(0xe6b5), u.fonts['iconfont'], dict(textstyle.GRAY_TITLE_3), center=(self.rect.w / 8 * (i * 2 + 1), self.rect.h / 2 * 3)))
 
         self.size_kf = fantas.LabelKeyFrame(self, 'size', (PAGEWIDTH - LISTPADDING * 2, self.HEIGHT * 2), 10, fantas.harmonic_curve)
-    
+        self.top_kf = fantas.RectKeyFrame(self, 'top', self.rect.top, 10, fantas.harmonic_curve)
+
     def add_choose_node(self, node1, node2):
+        print(node1, node2)
         self.hide_choose_branch()
 
     def show_choose_branch(self):
@@ -306,4 +327,9 @@ class AddBranchButton(fantas.SmoothColorButton):
 
 add_branch_button = AddBranchButton(midtop=(PAGEWIDTH / 2, LISTPADDING))
 add_branch_button.join(branch_list)
-update_list(AddBranchButton.HEIGHT)
+
+class BranchUi(fantas.Label):
+    INIT_HEIGHT = 80
+
+    def __init__(self):
+        super().__init__((PAGEWIDTH - LISTPADDING * 2, self.INIT_HEIGHT), )
