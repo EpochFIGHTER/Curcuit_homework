@@ -36,6 +36,11 @@ GRAY_TITLE_2 = {
     'size': 48,
 }
 
+GRAY_TITLE_3 = {
+    'fgcolor': color.GRAY,
+    'size': 32,
+}
+
 GRAY_TITLE_4 = {
     'fgcolor': color.GRAY,
     'size': 24,

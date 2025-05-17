@@ -22,7 +22,13 @@
 from Core.Component import node_0, node_1, node_2, node_3
 ```
 
-其中 `node_0` 的为参考节点，电势属性 `V` 已经设置为 0
+或者访问列表 `nodes`，按顺序存储了 4 个节点
+
+```python
+from Core.Component import nodes
+```
+
+其中 `node_0` 为参考节点，电势属性 `V` 已经设置为 0
 
 通过节点对象可以获取两个节点之间的所有支路，通过支路对象可以获取该支路上的所有元件
 
@@ -30,8 +36,8 @@ from Core.Component import node_0, node_1, node_2, node_3
 
 ### 项目进度：
 
-- [x] #### 底层类搭建（描述电路拓扑结构与电气属性）
+- [x] **底层类搭建（描述电路拓扑结构与电气属性）**
 
-- [ ] #### 电路求解分析算法设计
+- [ ] **电路求解分析算法设计**
 
-- [ ] #### GUI 界面开发
+- [ ] **GUI 界面开发**

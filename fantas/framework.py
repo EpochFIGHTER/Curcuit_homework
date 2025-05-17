@@ -206,7 +206,7 @@ class Ui(fantas.NodeBase):
         super().__init__()
         self.img = img
         self.size = self.origin_size = img.get_size()
-        self.rect = img.get_rect(**anchor)
+        self.rect : pygame.Rect = img.get_rect(**anchor)
 
     def mark_update(self):
         # 标记图像更新

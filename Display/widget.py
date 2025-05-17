@@ -1,5 +1,5 @@
-import pygame
-from pathlib import Path
+# import pygame
+# from pathlib import Path
 
 import fantas
 from fantas import uimanager as u

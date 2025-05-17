@@ -1,5 +1,5 @@
-import pygame
-from pathlib import Path
+# import pygame
+# from pathlib import Path
 
 import fantas
 from fantas import uimanager as u
@@ -8,10 +8,10 @@ import Display.color as color
 import Display.textstyle as textstyle
 import Display.buttonstyle as buttonstyle
 import Display.inputstyle as inputstyle
-
 from Display.widget import NumberInputWidget, UnitSwitchButton
-from Core.Component import F_table
 from Display.element import NodeUi
+
+from Core.Component import F_table
 
 grid_size = 60
 grid_line_width = 2

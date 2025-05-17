@@ -340,7 +340,6 @@ class Capacitor(Impedance):
         return self._C
     def _set_C(self, C):
         self._C = C
-        self.Z = 1 / (1j * C)
     C = property(_get_C, _set_C)    # 电容
 
     def _get_Z(self):
@@ -368,7 +367,6 @@ class Inductor(Impedance):
         return self._L
     def _set_L(self, L):
         self._L = L
-        self.Z = 1j * L
     L = property(_get_L, _set_L)     # 电感
 
     def _get_Z(self):

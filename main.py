@@ -8,11 +8,11 @@ import fantas
 from fantas import uimanager as u
 
 import Display.color as color
-import Display.textstyle as textstyle
-import Display.buttonstyle as buttonstyle
+# import Display.textstyle as textstyle
+# import Display.buttonstyle as buttonstyle
 
-import Display.launch as launch
-launch.show_start_window(2000)    # 启动窗口
+# import Display.launch as launch
+# launch.show_start_window(2500)    # 启动窗口
 
 info = pygame.display.Info()
 if info.current_w > 1920 and info.current_h > 1080:
