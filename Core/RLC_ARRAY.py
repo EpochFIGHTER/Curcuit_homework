@@ -1,4 +1,5 @@
 #引用后可正常计算 适用于RLC分析
+import math
 import numpy as np
 def build_A(node_0, node_1, node_2, node_3, frequency=1000):
     '''
