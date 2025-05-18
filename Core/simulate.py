@@ -10,9 +10,9 @@
 """
 import numpy as np
 import math
-from Component import ElectricalNode, ElectricalComponent, ElectricalBranch
-from Component import PowerSource, IndependentVoltageSource, IndependentCurrentSource
-from Component import DependentVoltageSource, DependentCurrentSource
+from Core.Component import ElectricalNode, ElectricalComponent, ElectricalBranch
+from Core.Component import PowerSource, IndependentVoltageSource, IndependentCurrentSource
+from Core.Component import DependentVoltageSource, DependentCurrentSource
 
 def get_nodes_and_voltage_sources(nodes):
     """

@@ -737,10 +737,11 @@ class IndependentCurrentSourceUi(ComponentUi):
 
 VA_table = ("U", "I")
 
-class ControlComponentInputWidget(fantas.InputLine):
+class ControlComponentInputWidget(fantas.InputLineWidget):
     def stop_input(self):
         super().stop_input()
-        
+        if Core.COMPONENT_DICT.get(self.ui.text.text) is None:
+            self.ui.clear()
 
 class DependentVoltageSourceUi(ComponentUi):
     def __init__(self, branchui, num, **anchor):
@@ -752,10 +753,20 @@ class DependentVoltageSourceUi(ComponentUi):
         self.value_unit_box.join(self)
 
         fantas.Text("控制元件", u.fonts['deyi'], textstyle.DARKBLUE_TITLE_4, midleft=(self.MAX_HEIGHT, self.MAX_HEIGHT / 3)).join(self)
-        self.control_component_input_box
+        self.control_component_input_box = fantas.InputLine((80, 40), u.fonts['deyi'], inputstyle.small_style, textstyle.DARKBLUE_TITLE_4, maxinput=8, inputwidget=ControlComponentInputWidget, bd=2, sc=color.GRAY, bg=color.LIGHTWHITE, radius={ 'border_radius': 12 }, midleft=(self.MAX_HEIGHT * 1.5, self.MAX_HEIGHT / 3))
+        self.control_component_input_box.join(self)
 
 class DependentCurrentSourceUi(ComponentUi):
     def __init__(self, branchui, num, **anchor):
         super().__init__(branchui, num, **anchor)
+
+        self.value_input_box = fantas.InputLine((100, 40), u.fonts['deyi'], inputstyle.small_style, textstyle.DARKBLUE_TITLE_4, "系数", 32, NumberInputWidget, bd=2, sc=color.GRAY, bg=color.LIGHTWHITE, radius={ 'border_radius': 12 }, midleft=(self.MAX_HEIGHT, self.MAX_HEIGHT * 2 / 3))
+        self.value_input_box.join(self)
+        self.value_unit_box = UnitSwitchButton(VA_table, 0, midleft=(self.value_input_box.rect.right + 10, self.value_input_box.rect.centery))
+        self.value_unit_box.join(self)
+
+        fantas.Text("控制元件", u.fonts['deyi'], textstyle.DARKBLUE_TITLE_4, midleft=(self.MAX_HEIGHT, self.MAX_HEIGHT / 3)).join(self)
+        self.control_component_input_box = fantas.InputLine((80, 40), u.fonts['deyi'], inputstyle.small_style, textstyle.DARKBLUE_TITLE_4, maxinput=8, inputwidget=ControlComponentInputWidget, bd=2, sc=color.GRAY, bg=color.LIGHTWHITE, radius={ 'border_radius': 12 }, midleft=(self.MAX_HEIGHT * 1.5, self.MAX_HEIGHT / 3))
+        self.control_component_input_box.join(self)
 
 COMPONENTUI_CLASS = (ResistorUi, CapacitorUi, InductorUi, ImpedanceUi, IndependentVoltageSourceUi, IndependentCurrentSourceUi, DependentVoltageSourceUi, DependentCurrentSourceUi)
