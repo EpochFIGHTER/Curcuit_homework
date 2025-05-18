@@ -1,4 +1,4 @@
-# import pygame
+import pygame
 # from pathlib import Path
 
 import fantas
@@ -9,7 +9,6 @@ import Display.textstyle as textstyle
 import Display.buttonstyle as buttonstyle
 import Display.inputstyle as inputstyle
 from Display.widget import NumberInputWidget, UnitSwitchButton
-from Display.element import NodeUi
 
 from Core.Component import F_table
 
@@ -149,6 +148,18 @@ buildnew_button.join(viewbox)
 buildnew_icon = fantas.IconText(chr(0xe60f), u.fonts['iconfont'], textstyle.DARKBLUE_TITLE_2, center=(buildnew_button.rect.w/2, buildnew_button.rect.h/2))
 buildnew_icon.join(buildnew_button)
 
+def adapt():
+    diagram_box.mousewidget.r = 1
+    diagram_box.size = (diagram_box.origin_size[0] * diagram_box.mousewidget.r, diagram_box.origin_size[1] * diagram_box.mousewidget.r)
+    diagram_box.mark_update()
+    diagram_box.rect.topleft = (0, 0)
+
+adapt_button = fantas.SmoothColorButton((ProjectNameBox.HEIGHT, ProjectNameBox.HEIGHT), buttonstyle.common_button_style, 2, radius={'border_radius': 16}, midleft=(buildnew_button.rect.right + project_name.PADDING, project_name.rect.centery))
+adapt_button.bind(adapt)
+adapt_button.join(viewbox)
+adapt_icon = fantas.IconText(chr(0xe64d), u.fonts['iconfont'], textstyle.DARKBLUE_TITLE_2, center=(adapt_button.rect.w/2, adapt_button.rect.h/2))
+adapt_icon.join(adapt_button)
+
 class FreqInputLineWidget(NumberInputWidget):
     def stop_input(self):
         super().stop_input()
@@ -189,14 +200,79 @@ freq_inputline.join(viewbox)
 freq_unit_switch_button = UnitSwitchButton(F_table, midleft=(freq_inputline.rect.right + freq_inputline.HEIGHT / 4, freq_inputline.rect.centery))
 freq_unit_switch_button.join(viewbox)
 
-node_0_icon = NodeUi(center=(viewbox.rect.w * 1 / 8, viewbox.rect.h / 2))
-node_1_icon = NodeUi(center=(viewbox.rect.w * 3 / 8, viewbox.rect.h / 2))
-node_2_icon = NodeUi(center=(viewbox.rect.w * 5 / 8, viewbox.rect.h / 2))
-node_3_icon = NodeUi(center=(viewbox.rect.w * 7 / 8, viewbox.rect.h / 2))
-node_0_icon.join(viewbox)
-node_1_icon.join(viewbox)
-node_2_icon.join(viewbox)
-node_3_icon.join(viewbox)
+class DiagramBoxMouuseWidget(fantas.MouseBase):
+    SCALESPEED = 0.05
+    
+    def __init__(self, ui):
+        super().__init__(ui, 3)
+        self.pressed_pos = None
+        self.start_pos = None
+        self.r = 1
+
+    def mousepress(self, pos, button):
+        if button == pygame.BUTTON_LEFT and 0 < pos[0] < viewbox.rect.w - 80 and 150 < pos[1] < viewbox.rect.h - 80:
+            self.pressed_pos = pos
+            self.start_pos = self.ui.rect.topleft
+
+    def mouserelease(self, pos, button):
+        if self.pressed_pos is not None:
+            self.pressed_pos = None
+
+    def mousemove(self, pos):
+        if self.pressed_pos is not None:
+            self.ui.rect.topleft = (self.start_pos[0] + pos[0] - self.pressed_pos[0], self.start_pos[1] + pos[1] - self.pressed_pos[1])
+            self.ui.father.mark_update()
+
+    def mousescroll(self, x, y):
+        pos = pygame.mouse.get_pos()
+        if 0 < pos[0] < viewbox.rect.w - 80 and 150 < pos[1] < viewbox.rect.h - 80:
+            self.r += y * self.SCALESPEED
+            if self.r < 0.25:
+                self.r = 0.25
+            elif self.r > 2:
+                self.r = 2
+            self.ui.size = (self.ui.origin_size[0] * self.r, self.ui.origin_size[1] * self.r)
+            self.ui.mark_update()
+
+class DiagramBox(fantas.Ui):
+    def __init__(self):
+        super().__init__(pygame.Surface((0, 0), pygame.SRCALPHA))
+        self.mousewidget = DiagramBoxMouuseWidget(self)
+        self.mousewidget.apply_event()
+
+    def update(self, anchor=None):
+        w = max((ui.rect.right for ui in self.kidgroup), default=0)
+        h = max((ui.rect.bottom for ui in self.kidgroup), default=0)
+        self.img = pygame.Surface((w, h), pygame.SRCALPHA)
+        self.size = (w, h)
+        self.apply_size()
+
+diagram_box = DiagramBox()
+diagram_box.join_to(viewbox, project_name.get_index())
+
+class NodeUi(fantas.IconText):
+    numtext = chr(0xe6b5)
+
+    def __init__(self, node_num):
+        self.node_num = node_num
+        super().__init__(self.numtext, u.fonts['iconfont'], textstyle.DARKBLUE_TITLE_3, center=(viewbox.rect.w * (node_num * 2 + 1) / 8, viewbox.rect.h / 2))
+        self.name = fantas.Text(f"n{node_num}", u.fonts['shuhei'], textstyle.DARKBLUE_TITLE_3, topright=self.rect.bottomleft)
+
+    def join(self, node):
+        super().join(node)
+        self.name.join(node)
+
+node_0_icon = NodeUi(0)
+node_1_icon = NodeUi(1)
+node_2_icon = NodeUi(2)
+node_3_icon = NodeUi(3)
+node_0_icon.join(diagram_box)
+node_1_icon.join(diagram_box)
+node_2_icon.join(diagram_box)
+node_3_icon.join(diagram_box)
+
+diagram_box.anchor = 'topleft'
+diagram_box.update()
 
 def layout():
     viewbox.join(u.root)
