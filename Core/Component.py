@@ -417,97 +417,30 @@ class Inductor(Impedance):
             return f"{self.prefix}{self.num}"
 
 
-def build_A(node_0, node_1, node_2, node_3, frequency=1000):
-    '''
-    @brief 构建自导纳矩阵A应用于RLC电路分析
-    '''
-    global OMEGA
-    OMEGA = 2 * math.pi * frequency
-
-    # 节点映射表
-    node_pairs = [
-        (node_0, node_1),
-        (node_0, node_2),
-        (node_0, node_3),
-        (node_1, node_2),
-        (node_1, node_3),
-        (node_2, node_3)
-    ]
-
-    # 计算各支路的导纳
-    branch_admittances = {}
-    for n1, n2 in node_pairs:
-        branch = n1.branches.get(n2)  # 使用字典的get方法
-        if branch and branch.Z != complex(0, 0):
-            branch_admittances[(n1, n2)] = branch.Y
-        else:
-            branch_admittances[(n1, n2)] = complex(0, 0)
-
-    # 自导纳计算
-    a11 = branch_admittances[(node_0, node_1)] + branch_admittances[(node_1, node_2)] + branch_admittances[(node_1, node_3)]
-    a22 = branch_admittances[(node_0, node_2)] + branch_admittances[(node_1, node_2)] + branch_admittances[(node_2, node_3)]
-    a33 = branch_admittances[(node_0, node_3)] + branch_admittances[(node_1, node_3)] + branch_admittances[(node_2, node_3)]
-
-    # 互导纳计算
-    a12 = branch_admittances[(node_1, node_2)]
-    a13 = branch_admittances[(node_1, node_3)]
-    a23 = branch_admittances[(node_2, node_3)]
-
-    A = np.array([[a11, -a12, -a13],
-                  [-a12, a22, -a23],
-                  [-a13, -a23, a33]])
-    return A
-
-
-
-
-
-node_0 = ElectricalNode(0)    # 参考节点
-node_0.V = 0                  # 参考节点电压为0
-node_1 = ElectricalNode(1)    # 节点1
-node_2 = ElectricalNode(2)    # 节点2
-node_3 = ElectricalNode(3)    # 节点3
-nodes = [node_0, node_1, node_2, node_3]
-
-# 以下为测试用的电路结构搭建
-b = ElectricalBranch(node_0, node_1)
-c = IndependentVoltageSource(b)
-b.append(c)
-c.U = 100
-b = ElectricalBranch(node_0, node_2)
-c = Resistor(b)
-c.R = 1
-b.append(c)
-c = IndependentVoltageSource(b)
-c.U = 90
-b.append(c)
-b = ElectricalBranch(node_0, node_3)
-c = Resistor(b)
-c.R = 1
-b.append(c)
-c = IndependentCurrentSource(b)
-c.I = 20
-b.append(c)
-b = ElectricalBranch(node_1, node_2)
-c = IndependentVoltageSource(b)
-c.U = 110
-b.append(c)
-b = ElectricalBranch(node_1, node_3)
-c = Resistor(b)
-c.R = 2
-b.append(c)
-b = ElectricalBranch(node_2, node_3)
-c = Resistor(b)
-c.R = 2
-b.append(c)
-del b, c
-
+# 模块测试代码，仅在直接运行模块时执行
 if __name__ == "__main__":
-    # 测试
-    print("电气拓扑结构：")
-    for i in range(0, 3):
-        for j in range(i + 1, 4):
-            for b in nodes[i].branches[nodes[j]]:
-                print(b)
-                for c in b:
-                    print(c)
+    # 创建示例电路
+    node_0 = ElectricalNode(0)    # 参考节点
+    node_0.V = 0                  # 参考节点电压为0
+    node_1 = ElectricalNode(1)    # 节点1
+    node_2 = ElectricalNode(2)    # 节点2
+    node_3 = ElectricalNode(3)    # 节点3
+    nodes = [node_0, node_1, node_2, node_3]
+    
+    # 测试支路创建
+    b1 = ElectricalBranch(node_0, node_1)
+    vs = IndependentVoltageSource(b1)
+    vs.U = 5
+    b1.append(vs)
+    
+    r1 = Resistor(ElectricalBranch(node_1, node_2))
+    r1.R = 1000
+    r1.branch.append(r1)
+    
+    # 测试打印组件信息
+    print("电气拓扑测试：")
+    print(node_0)
+    print(node_1)
+    print(b1)
+    for c in b1:
+        print(c)
