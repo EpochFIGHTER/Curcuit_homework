@@ -33,7 +33,7 @@ branch_list_button_style = {
 }
 
 warn_button_style = {
-    'origin_bg': color.RED,
+    'origin_bg': color.LIGHTWHITE,
     'origin_sc': color.GRAY,
     'origin_bd': 2,
 
@@ -44,4 +44,4 @@ warn_button_style = {
 }
 
 
-del pygame, offset_large, color
+del pygame, color

@@ -150,9 +150,13 @@ buildnew_icon.join(buildnew_button)
 
 def adapt():
     diagram_box.mousewidget.r = 1
-    diagram_box.size = (diagram_box.origin_size[0] * diagram_box.mousewidget.r, diagram_box.origin_size[1] * diagram_box.mousewidget.r)
+    # diagram_box.size = (diagram_box.origin_size[0] * diagram_box.mousewidget.r, diagram_box.origin_size[1] * diagram_box.mousewidget.r)
+    diagram_box.size_kf.value = (diagram_box.origin_size[0] * diagram_box.mousewidget.r, diagram_box.origin_size[1] * diagram_box.mousewidget.r)
+    diagram_box.size_kf.launch("continue")
     diagram_box.mark_update()
-    diagram_box.rect.topleft = (0, 0)
+    # diagram_box.rect.topleft = (0, 0)
+    diagram_box.pos_kf.value = (0, 0)
+    diagram_box.pos_kf.launch("continue")
 
 adapt_button = fantas.SmoothColorButton((ProjectNameBox.HEIGHT, ProjectNameBox.HEIGHT), buttonstyle.common_button_style, 2, radius={'border_radius': 16}, midleft=(buildnew_button.rect.right + project_name.PADDING, project_name.rect.centery))
 adapt_button.bind(adapt)
@@ -220,7 +224,9 @@ class DiagramBoxMouuseWidget(fantas.MouseBase):
 
     def mousemove(self, pos):
         if self.pressed_pos is not None:
-            self.ui.rect.topleft = (self.start_pos[0] + pos[0] - self.pressed_pos[0], self.start_pos[1] + pos[1] - self.pressed_pos[1])
+            self.ui.pos_kf.value = (self.start_pos[0] + pos[0] - self.pressed_pos[0], self.start_pos[1] + pos[1] - self.pressed_pos[1])
+            self.ui.pos_kf.launch("continue")
+            # self.ui.rect.topleft = (self.start_pos[0] + pos[0] - self.pressed_pos[0], self.start_pos[1] + pos[1] - self.pressed_pos[1])
             self.ui.father.mark_update()
 
     def mousescroll(self, x, y):
@@ -231,7 +237,9 @@ class DiagramBoxMouuseWidget(fantas.MouseBase):
                 self.r = 0.25
             elif self.r > 2:
                 self.r = 2
-            self.ui.size = (self.ui.origin_size[0] * self.r, self.ui.origin_size[1] * self.r)
+            # self.ui.size = (self.ui.origin_size[0] * self.r, self.ui.origin_size[1] * self.r)
+            self.ui.size_kf.value = (self.ui.origin_size[0] * self.r, self.ui.origin_size[1] * self.r)
+            self.ui.size_kf.launch("continue")
             self.ui.mark_update()
 
 class DiagramBox(fantas.Ui):
@@ -239,6 +247,8 @@ class DiagramBox(fantas.Ui):
         super().__init__(pygame.Surface((0, 0), pygame.SRCALPHA))
         self.mousewidget = DiagramBoxMouuseWidget(self)
         self.mousewidget.apply_event()
+        self.size_kf = fantas.UiKeyFrame(self, 'size', self.size, 10, fantas.slower_curve)
+        self.pos_kf = fantas.RectKeyFrame(self, 'topleft', self.rect.topleft, 10, fantas.slower_curve)
 
     def update(self, anchor=None):
         w = max((ui.rect.right for ui in self.kidgroup), default=0)
@@ -273,6 +283,22 @@ node_3_icon.join(diagram_box)
 
 diagram_box.anchor = 'topleft'
 diagram_box.update()
+
+switch_color_button = fantas.SmoothColorButton((ProjectNameBox.HEIGHT, ProjectNameBox.HEIGHT), buttonstyle.common_button_style, 2, radius={'border_radius': 16}, bottomleft=(ProjectNameBox.HEIGHT / 2, viewbox.rect.h - ProjectNameBox.HEIGHT / 2))
+switch_color_button.join(viewbox)
+switch_color_icon = fantas.IconText(chr(0xe959 if color.IS_DARKMODE else 0xe76b), u.fonts['iconfont'], textstyle.DARKBLUE_TITLE_2, center=(switch_color_button.rect.w/2, switch_color_button.rect.h/2))
+switch_color_icon.join(switch_color_button)
+
+def switch_color():
+    color.switch_dark_mode()
+    if color.IS_DARKMODE:
+        switch_color_icon.text = chr(0xe959)
+    else:
+        switch_color_icon.text = chr(0xe76b)
+    switch_color_icon.update_img()
+switch_color_button.bind(switch_color)
+
+
 
 def layout():
     viewbox.join(u.root)

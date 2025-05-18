@@ -7,9 +7,13 @@ from fantas import uimanager as u
 import Display.color as color
 import Display.textstyle as textstyle
 import Display.buttonstyle as buttonstyle
+import Display.inputstyle as inputstyle
 import Display.viewbox as viewbox
 
-from Core.Component import nodes, ElectricalBranch
+from Display.widget import NumberInputWidget, UnitSwitchButton
+
+from Core.Component import nodes, ElectricalBranch, Resistor, Capacitor, Inductor, Impedance, IndependentVoltageSource, IndependentCurrentSource, DependentVoltageSource, DependentCurrentSource
+import Core
 
 SIDEBAR_LEFT = u.WIDTH / 4 * 3
 
@@ -172,10 +176,11 @@ class BranchListMouseWidget(fantas.MouseBase):
         super().__init__(ui, 3)
     
     def mousescroll(self, x, y):
-        value = min(max(self.ui.top_kf.value + y * self.SPEED, PAGEHEIGHT - self.ui.rect.h), 0)
-        if self.ui.top_kf.value != value:
-            self.ui.top_kf.value = value
-            self.ui.top_kf.launch('continue')
+        if self.mouseon:
+            value = min(max(self.ui.top_kf.value + y * self.SPEED, PAGEHEIGHT - self.ui.rect.h), 0)
+            if self.ui.top_kf.value != value:
+                self.ui.top_kf.value = value
+                self.ui.top_kf.launch('continue')
 
 class BranchList(fantas.Label):
     def __init__(self):
@@ -184,18 +189,19 @@ class BranchList(fantas.Label):
         self.top_kf = fantas.RectKeyFrame(self, 'top', 0, 10, fantas.slower_curve)
         self.mousewidget = BranchListMouseWidget(self)
         self.mousewidget.apply_event()
+        self.size_kf = fantas.LabelKeyFrame(self, 'size', (PAGEWIDTH, LISTPADDING * 2), 10, fantas.slower_curve)
 
     def append(self, node):
         super().append(node)
-        self.set_size((PAGEWIDTH, self.rect.h + node.MAX_HEIGHT + LISTPADDING))
+        self.add_height(node.MAX_HEIGHT + LISTPADDING)
 
     def remove(self, node):
         super().remove(node)
-        self.set_size((PAGEWIDTH, self.rect.h - node.MAX_HEIGHT - LISTPADDING))
+        self.add_height(- node.MAX_HEIGHT - LISTPADDING)
 
     def insert(self, node, index):
         super().insert(node, index)
-        self.set_size((PAGEWIDTH, self.rect.h + node.MAX_HEIGHT + LISTPADDING))
+        self.add_height(node.MAX_HEIGHT + LISTPADDING)
         if index < 0:
             index = len(self.kidgroup) + index
         self.move(index, node.size_kf.value[1] + LISTPADDING)
@@ -206,7 +212,8 @@ class BranchList(fantas.Label):
             k.top_kf.launch('continue')
 
     def add_height(self, height):
-        self.set_size((PAGEWIDTH, self.rect.h + height))
+        self.size_kf.value = (self.size_kf.value[0], self.size_kf.value[1] + height)
+        self.size_kf.launch('continue')
 
 branch_list = BranchList()
 branch_list.join(structure.page)
@@ -216,20 +223,21 @@ class ComponentList(fantas.Label):
         super().__init__((PAGEWIDTH - LISTPADDING * 2, 0), **anchor)
         self.anchor = 'topleft'
         self.top_kf = fantas.RectKeyFrame(self, 'top', 0, 10, fantas.slower_curve)
-        self.mousewidget = BranchListMouseWidget(self)
-        self.mousewidget.apply_event()
+        # self.mousewidget = BranchListMouseWidget(self)
+        # self.mousewidget.apply_event()
+        self.size_kf = fantas.LabelKeyFrame(self, 'size', (PAGEWIDTH - LISTPADDING * 2, 0), 10, fantas.slower_curve)
 
     def append(self, node):
         super().append(node)
-        self.set_size((PAGEWIDTH, self.rect.h + node.MAX_HEIGHT + LISTPADDING))
+        self.add_height(node.MAX_HEIGHT + LISTPADDING)
 
     def remove(self, node):
         super().remove(node)
-        self.set_size((PAGEWIDTH, self.rect.h - node.MAX_HEIGHT - LISTPADDING))
+        self.add_height(- node.MAX_HEIGHT - LISTPADDING)
     
     def insert(self, node, index):
         super().insert(node, index)
-        self.set_size((PAGEWIDTH, self.rect.h + node.MAX_HEIGHT + LISTPADDING))
+        self.add_height(node.MAX_HEIGHT + LISTPADDING)
         if index < 0:
             index = len(self.kidgroup) + index
         self.move(index, node.size_kf.value[1] + LISTPADDING)
@@ -240,7 +248,8 @@ class ComponentList(fantas.Label):
             k.top_kf.launch('continue')
 
     def add_height(self, height):
-        self.set_size((PAGEWIDTH, self.rect.h + height))
+        self.size_kf.value = (self.size_kf.value[0], self.size_kf.value[1] + height)
+        self.size_kf.launch('continue')
 
 class AddBranchButtonMouseWidget(fantas.MouseBase):
     def __init__(self, ui):
@@ -269,25 +278,30 @@ class AddBranchButtonMouseWidget(fantas.MouseBase):
                 pressed_node, released_node = self.pressed_node, self.released_node
             d = released_node - pressed_node
             if d == 1:
-                l = fantas.Label((self.ui.rect.w / 4 - 16, 4), bg=color.DARKBLUE, center=(self.ui.rect.w / 4 * (pressed_node + 1), self.ui.HEIGHT * 3 / 2))
+                l = fantas.Label((self.ui.rect.w / 4 - 16, 4), bg=color.DARKBLUE, center=(self.ui.rect.w / 4 * (pressed_node + 1), self.ui.MAX_HEIGHT * 3 / 2))
                 l.join(self.ui)
                 self.line.append(l)
             elif d > 1:
-                l = fantas.Label((4, 16), bg=color.DARKBLUE, radius={'border_bottom_left_radius': 2, 'border_bottom_right_radius': 2}, midtop=(self.ui.rect.w / 8 * (pressed_node * 2 + 1), self.ui.HEIGHT * 3 / 2 + 8))
+                l = fantas.Label((4, 16), bg=color.DARKBLUE, radius={'border_bottom_left_radius': 2, 'border_bottom_right_radius': 2}, midtop=(self.ui.rect.w / 8 * (pressed_node * 2 + 1), self.ui.MAX_HEIGHT * 3 / 2 + 8))
                 l.join(self.ui)
                 self.line.append(l)
-                l = fantas.Label((4, 16), bg=color.DARKBLUE, radius={'border_bottom_left_radius': 2, 'border_bottom_right_radius': 2}, midtop=(self.ui.rect.w / 8 * (released_node * 2 + 1), self.ui.HEIGHT * 3 / 2 + 8))
+                l = fantas.Label((4, 16), bg=color.DARKBLUE, radius={'border_bottom_left_radius': 2, 'border_bottom_right_radius': 2}, midtop=(self.ui.rect.w / 8 * (released_node * 2 + 1), self.ui.MAX_HEIGHT * 3 / 2 + 8))
                 l.join(self.ui)
                 self.line.append(l)
-                l = fantas.Label((self.ui.rect.w / 4 * d, 4), bg=color.DARKBLUE, radius={'border_bottom_left_radius': 2, 'border_bottom_right_radius': 2}, midleft=(self.ui.rect.w / 8 * (pressed_node * 2 + 1), self.ui.HEIGHT * 3 / 2 + 24))
+                l = fantas.Label((self.ui.rect.w / 4 * d, 4), bg=color.DARKBLUE, radius={'border_bottom_left_radius': 2, 'border_bottom_right_radius': 2}, midleft=(self.ui.rect.w / 8 * (pressed_node * 2 + 1), self.ui.MAX_HEIGHT * 3 / 2 + 24))
                 l.join(self.ui)
                 self.line.append(l)
+            self.ui.add_text.text = f"n{nodes[pressed_node].num} --- n{nodes[released_node].num}"
+            self.ui.add_text.update_img()
+            return
+        self.ui.add_text.text = "选择支路节点"
+        self.ui.add_text.update_img()
 
     def mousepress(self, pos, button):
         if button == pygame.BUTTON_LEFT and self.ui.status == 1:
             if not self.mouseon:
                 self.ui.hide_choose_branch()
-            elif self.ui.HEIGHT < pos[1] - self.ui.rect.top < self.ui.HEIGHT * 2:
+            elif self.ui.MAX_HEIGHT < pos[1] - self.ui.rect.top < self.ui.MAX_HEIGHT * 2:
                 i = int((pos[0] - self.ui.rect.left) / (self.ui.rect.w / 4))
                 if 0 <= i < 4:
                     self.pressed_node = i
@@ -318,12 +332,11 @@ class AddBranchButtonMouseWidget(fantas.MouseBase):
             self.draw_branch()
 
 class AddBranchButton(fantas.SmoothColorButton):
-    HEIGHT = 80
-    MAX_HEIGHT = HEIGHT * 2
+    MAX_HEIGHT = 80
     BG = color.LIGHTGREEN
 
     def __init__(self, **anchor):
-        super().__init__((PAGEWIDTH - LISTPADDING * 2, self.HEIGHT), buttonstyle.branch_list_button_style, 2, radius={'border_radius': 16}, **anchor)
+        super().__init__((PAGEWIDTH - LISTPADDING * 2, self.MAX_HEIGHT), buttonstyle.branch_list_button_style, 2, radius={'border_radius': 16}, **anchor)
         self.anchor = 'midtop'
         self.bind(self.show_choose_branch)
         self.banned_mousewidget = AddBranchButtonMouseWidget(self)
@@ -336,7 +349,7 @@ class AddBranchButton(fantas.SmoothColorButton):
         for i in range(4):
             self.choose_nodes.append(fantas.IconText(chr(0xe6b5), u.fonts['iconfont'], dict(textstyle.GRAY_TITLE_3), center=(self.rect.w / 8 * (i * 2 + 1), self.rect.h / 2 * 3)))
 
-        self.size_kf = fantas.LabelKeyFrame(self, 'size', (PAGEWIDTH - LISTPADDING * 2, self.HEIGHT), 10, fantas.harmonic_curve)
+        self.size_kf = fantas.LabelKeyFrame(self, 'size', (PAGEWIDTH - LISTPADDING * 2, self.MAX_HEIGHT), 10, fantas.harmonic_curve)
         self.top_kf = fantas.RectKeyFrame(self, 'top', self.rect.top, 10, fantas.harmonic_curve)
 
     def add_choose_node(self, node1, node2):
@@ -347,22 +360,24 @@ class AddBranchButton(fantas.SmoothColorButton):
         self.ban()
         self.status = 1
         self.banned_mousewidget.mouseon = True
-        self.size_kf.value = (PAGEWIDTH - LISTPADDING * 2, self.HEIGHT * 2)
+        self.size_kf.value = (PAGEWIDTH - LISTPADDING * 2, self.MAX_HEIGHT * 2)
         self.size_kf.launch('continue')
         self.add_icon.leave()
         self.add_text.join(self)
         for i in self.choose_nodes:
             i.join(self)
+        branch_list.add_height(self.MAX_HEIGHT)
 
     def hide_choose_branch(self):
         self.status = 0
         self.recover()
-        self.size_kf.value = (PAGEWIDTH - LISTPADDING * 2, self.HEIGHT)
+        self.size_kf.value = (PAGEWIDTH - LISTPADDING * 2, self.MAX_HEIGHT)
         self.size_kf.launch('continue')
         self.add_icon.join(self)
         self.add_text.leave()
         for i in self.choose_nodes:
             i.leave()
+        branch_list.add_height(-self.MAX_HEIGHT)
 
     def ban(self):
         super().ban()
@@ -402,7 +417,7 @@ class BranchUi(fantas.Label):
         self.unfold_icon.join(self.unfold_button)
         self.unfold_icon_angle_kf = fantas.UiKeyFrame(self.unfold_icon, 'angle',90, 10, fantas.harmonic_curve)
 
-        self.title_text = fantas.Text(f"n{node1.num} --- n{node2.num}", u.fonts['deyi'], textstyle.DARKBLUE_TITLE_3, center=(self.rect.w / 2, self.unfold_button.rect.centery))
+        self.title_text = fantas.Text(f"n{node1.num} --- n{node2.num}", u.fonts['shuhei'], textstyle.DARKBLUE_TITLE_3, center=(self.rect.w / 2, self.unfold_button.rect.centery))
         self.title_text.join(self)
 
         self.delete_button = fantas.SmoothColorButton((self.INIT_HEIGHT - self.PADDING * 2, self.INIT_HEIGHT - self.PADDING * 2), buttonstyle.warn_button_style, 2, radius={'border_radius': 16}, topright=(self.rect.w - self.PADDING, self.PADDING))
@@ -412,26 +427,32 @@ class BranchUi(fantas.Label):
         self.delete_icon.join(self.delete_button)
 
         self.component_list = ComponentList(midtop=(self.rect.w / 2, self.INIT_HEIGHT))
-        self.component_list.join(self)
-        self.add_component_button = AddComponentButton(midtop=(self.rect.w / 2, self.PADDING)).join(self.component_list)
+        self.add_component_button = AddComponentButton(self, midtop=(self.rect.w / 2, self.PADDING))
+        self.add_component_button.join(self.component_list)
 
     def unfold(self):
-        self.size_kf.value = (PAGEWIDTH - LISTPADDING * 2, self.INIT_HEIGHT + self.component_list.rect.h + self.PADDING * 2)
+        self.component_list.join(self)
+        self.size_kf.value = (PAGEWIDTH - LISTPADDING * 2, self.INIT_HEIGHT + self.component_list.size_kf.value[1] + self.PADDING * 2)
         self.size_kf.launch('continue')
-        branch_list.add_height(self.component_list.rect.h + self.PADDING * 2)
-        branch_list.move(self.get_index() + 1, self.component_list.rect.h + self.PADDING * 2)
+        branch_list.add_height(self.component_list.size_kf.value[1] + self.PADDING * 2)
+        branch_list.move(self.get_index() + 1, self.component_list.size_kf.value[1] + self.PADDING * 2)
         self.unfold_button.bind(self.fold)
         self.unfold_icon_angle_kf.value = 0
         self.unfold_icon_angle_kf.launch('continue')
-    
+
     def fold(self):
-        self.size_kf.value = (PAGEWIDTH - LISTPADDING * 2, self.INIT_HEIGHT)
+        self.size_kf.bind_endupwith(self.after_fold)
+        self.size_kf.value = (self.size_kf.value[0], self.size_kf.value[1] - self.component_list.size_kf.value[1] - self.PADDING * 2)
         self.size_kf.launch('continue')
-        branch_list.add_height(-self.component_list.rect.h - self.PADDING * 2)
-        branch_list.move(self.get_index() + 1, -self.component_list.rect.h - self.PADDING * 2)
+        branch_list.add_height(-self.component_list.size_kf.value[1] - self.PADDING * 2)
+        branch_list.move(self.get_index() + 1, -self.component_list.size_kf.value[1] - self.PADDING * 2)
         self.unfold_button.bind(self.unfold)
         self.unfold_icon_angle_kf.value = 90
         self.unfold_icon_angle_kf.launch('continue')
+
+    def after_fold(self):
+        self.component_list.leave()
+        self.size_kf.bind_endupwith(None)
 
     def delete(self):
         pass
@@ -446,16 +467,16 @@ class AddComponentMouseWidget(fantas.MouseBase):
                 self.ui.hide_choose_component()        
 
 class AddComponentButton(fantas.SmoothColorButton):
-    HEIGHT = 80
-    MAX_HEIGHT = HEIGHT * 2
+    MAX_HEIGHT = 80
     BG = color.LIGHTGREEN
 
-    def __init__(self, **anchor):
-        super().__init__((PAGEWIDTH - LISTPADDING * 4, self.HEIGHT), buttonstyle.branch_list_button_style, 2, radius={'border_radius': 16}, **anchor)
+    def __init__(self, branchui, **anchor):
+        super().__init__((PAGEWIDTH - LISTPADDING * 4, self.MAX_HEIGHT), buttonstyle.branch_list_button_style, 2, radius={'border_radius': 16}, **anchor)
         self.anchor = 'midtop'
         self.bind(self.show_choose_component)
         self.banned_mousewidget = AddComponentMouseWidget(self)
         self.status = 0
+        self.branchui = branchui
     
         self.add_icon = fantas.IconText(chr(0xe620), u.fonts['iconfont'], textstyle.GRAY_TITLE_3, center=(self.rect.w / 2, self.rect.h / 2))
         self.add_icon.join(self)
@@ -463,31 +484,41 @@ class AddComponentButton(fantas.SmoothColorButton):
 
         self.choose_components = []
         for i in range(8):
-            self.choose_components.append(ChooseComponentButton(i, center=(self.rect.w / 16 * (i * 2 + 1), self.rect.h / 2 * 3)))
+            self.choose_components.append(ChooseComponentButton(i, self.branchui, center=(self.rect.w / 16 * (i * 2 + 1), self.rect.h / 2 * 3)))
 
-        self.size_kf = fantas.LabelKeyFrame(self, 'size', (PAGEWIDTH - LISTPADDING * 4, self.HEIGHT), 10, fantas.harmonic_curve)
+        self.size_kf = fantas.LabelKeyFrame(self, 'size', (PAGEWIDTH - LISTPADDING * 4, self.MAX_HEIGHT), 10, fantas.harmonic_curve)
         self.top_kf = fantas.RectKeyFrame(self, 'top', self.rect.top, 10, fantas.harmonic_curve)
     
     def show_choose_component(self):
         self.ban()
         self.status = 1
         self.banned_mousewidget.mouseon = True
-        self.size_kf.value = (PAGEWIDTH - LISTPADDING * 4, self.HEIGHT * 2)
+        self.size_kf.value = (self.size_kf.value[0], self.size_kf.value[1] + self.MAX_HEIGHT)
         self.size_kf.launch('continue')
         self.add_icon.leave()
         self.add_text.join(self)
         for i in self.choose_components:
             i.join(self)
-    
+        self.branchui.component_list.add_height(self.MAX_HEIGHT)
+        self.branchui.size_kf.value = (self.branchui.size_kf.value[0], self.branchui.size_kf.value[1] + self.MAX_HEIGHT)
+        self.branchui.size_kf.launch('continue')
+        branch_list.add_height(self.MAX_HEIGHT)
+        branch_list.move(self.branchui.get_index() + 1, self.MAX_HEIGHT)
+
     def hide_choose_component(self):
         self.status = 0
         self.recover()
-        self.size_kf.value = (PAGEWIDTH - LISTPADDING * 4, self.HEIGHT)
+        self.size_kf.value = (self.size_kf.value[0], self.size_kf.value[1] - self.MAX_HEIGHT)
         self.size_kf.launch('continue')
         self.add_icon.join(self)
         self.add_text.leave()
         for i in self.choose_components:
             i.leave()
+        self.branchui.component_list.add_height(-self.MAX_HEIGHT)
+        self.branchui.size_kf.value = (self.branchui.size_kf.value[0], self.branchui.size_kf.value[1] - self.MAX_HEIGHT)
+        self.branchui.size_kf.launch('continue')
+        branch_list.add_height(-self.MAX_HEIGHT)
+        branch_list.move(self.branchui.get_index() + 1, -self.MAX_HEIGHT)
 
     def ban(self):
         super().ban()
@@ -498,17 +529,233 @@ class AddComponentButton(fantas.SmoothColorButton):
         self.banned_mousewidget.cancel_event()
 
 class ChooseComponentButtonMouseWidget(fantas.ColorButtonMouseWidget):
-    pass
+    def mousein(self):
+        super().mousein()
+        self.ui.father.add_text.text = COMPONENT_NAME[self.ui.num]
+        self.ui.father.add_text.update_img()
+    
+    def mouseout(self):
+        super().mouseout()
+        self.ui.father.add_text.text = "选择元件类型"
+        self.ui.father.add_text.update_img()
+
+IMG_NAME = ('R', 'C', 'L', 'Z', 'U', 'I', 'kU', 'kI')
+COMPONENT_NAME = ('电阻', '电容', '电感', '通用阻抗', '独立电压源', '独立电流源', '受控电压源', '受控电流源')
+COMPONENT_CLASS = (Resistor, Capacitor, Inductor, Impedance, IndependentVoltageSource, IndependentCurrentSource, DependentVoltageSource, DependentCurrentSource)
+for i in IMG_NAME:
+    img = pygame.Surface((180, 80), pygame.SRCALPHA)
+    img.fill((255, 255, 255, 255))
+    img.blit(u.images[i], (0, 0), special_flags=pygame.BLEND_RGB_SUB)
+    img_ = pygame.Surface((180, 80), pygame.SRCALPHA)
+    img_.fill((0, 0, 0, 255))
+    img_.blit(u.images[i], (0, 0), special_flags=pygame.BLEND_RGBA_SUB)
+    img.blit(img_, (0, 0), special_flags=pygame.BLEND_RGBA_SUB)
+    u.images[f"DARK_{i}"] = img
 
 class ChooseComponentButton(fantas.SmoothColorButton):
-    IMG_NAME = ('R', 'C', 'L', 'Z', 'U', 'I', 'kU', 'kI')
-    COMPONENT_NAME = ('电阻', '电容', '电感', '阻抗', '独立电压源', '独立电流源', '受控电压源', '受控电流源')
     SIZE = 40
 
-    def __init__(self, num, **kwargs):
+    def __init__(self, num, branchui, **kwargs):
         super().__init__((self.SIZE, self.SIZE), buttonstyle.common_button_style, 2, ChooseComponentButtonMouseWidget, **kwargs)
-        self.icon = fantas.Ui(u.images[self.IMG_NAME[num]], center=(self.rect.w / 2, self.rect.h / 2))
+        self.num = num
+        self.branchui = branchui
+        if color.IS_DARKMODE:
+            self.icon = fantas.Ui(u.images[f"DARK_{IMG_NAME[num]}"], center=(self.rect.w / 2, self.rect.h / 2))
+        else:
+            self.icon = fantas.Ui(u.images[IMG_NAME[num]], center=(self.rect.w / 2, self.rect.h / 2))
         self.icon.size = (self.SIZE, self.SIZE * 80 / 180)
         self.icon.join(self)
         self.apply_size()
+        self.bind(self.add_component)
 
+    def add_component(self):
+        c = COMPONENTUI_CLASS[self.num](self.branchui, self.num, topleft=(LISTPADDING, self.branchui.add_component_button.rect.top))
+        c.join_to(self.branchui.component_list, -1)
+        c.branchui.size_kf.value = (c.branchui.size_kf.value[0], c.branchui.size_kf.value[1] + c.MAX_HEIGHT + LISTPADDING)
+        c.branchui.size_kf.launch('continue')
+        self.father.hide_choose_component()
+        branch_list.add_height(c.MAX_HEIGHT + LISTPADDING)
+        branch_list.move(self.branchui.get_index() + 1, c.MAX_HEIGHT + LISTPADDING)
+
+LEFT_FLAG_POS = (30, 20)
+RIGHT_FLAG_POS = (130, 20)
+ARROW_POS = (80, 90)
+
+class ComponentUiIconMouseWidget(fantas.MouseBase):
+    def __init__(self, ui):
+        super().__init__(ui, 1)
+    
+    def mousepress(self, pos, button):
+        if button == pygame.BUTTON_LEFT == self.mousedown:
+            if (pos[1] - self.ui.rect.top) < self.ui.rect.h / 2:
+                self.ui.father.switch_Vref()
+            else:
+                self.ui.father.switch_Iref()
+
+class ComponentUi(fantas.Label):
+    MAX_HEIGHT = 160
+
+    def __init__(self, branchui, num, **anchor):
+        super().__init__((PAGEWIDTH - LISTPADDING * 4, 0), 2, color.LIGHTGREEN, color.GRAY, radius={'border_radius': 16}, **anchor)
+        self.anchor = 'midtop'
+        self.branchui = branchui
+        self.num = num
+
+        self.size_kf = fantas.LabelKeyFrame(self, 'size', (PAGEWIDTH - LISTPADDING * 4, self.MAX_HEIGHT), 10, fantas.harmonic_curve)
+        self.top_kf = fantas.RectKeyFrame(self, 'top', self.rect.top, 10, fantas.harmonic_curve)
+        self.size_kf.launch('continue')
+
+        self.component = COMPONENT_CLASS[num](self.branchui.branch)
+
+        if color.IS_DARKMODE:
+            self.icon = fantas.Ui(u.images[f"DARK_{IMG_NAME[num]}"], center=(self.MAX_HEIGHT / 2, self.MAX_HEIGHT / 4))
+        else:
+            self.icon = fantas.Ui(u.images[IMG_NAME[num]], center=(self.MAX_HEIGHT / 2, self.MAX_HEIGHT / 4))
+        self.icon.size = (self.MAX_HEIGHT, self.MAX_HEIGHT * 80 / 180)
+        self.icon.apply_size()
+        self.icon.join(self)
+        self.icon_name = fantas.Text(f"{self.component.prefix}{self.component.num}", u.fonts['deyi'], textstyle.DARKBLUE_TITLE_3, center=(self.MAX_HEIGHT / 2, self.MAX_HEIGHT * 3 / 4))
+        self.icon_name.join(self)
+
+        self.moveup_button = fantas.SmoothColorButton((self.MAX_HEIGHT / 4, self.MAX_HEIGHT / 4), buttonstyle.common_button_style, 2, radius={'border_radius': self.MAX_HEIGHT // 8}, center=(self.size_kf.value[0] - self.MAX_HEIGHT / 4, self.MAX_HEIGHT / 5))
+        self.moveup_button.bind(self.moveup)
+        self.moveup_button.join(self)
+        self.moveup_icon = fantas.IconText(chr(0xe60e), u.fonts['iconfont'], textstyle.DARKBLUE_TITLE_3, center=(self.moveup_button.rect.w / 2, self.moveup_button.rect.h / 2))
+        self.moveup_icon.angle = 180
+        self.moveup_icon.join(self.moveup_button)
+        self.movedown_button = fantas.SmoothColorButton((self.MAX_HEIGHT / 4, self.MAX_HEIGHT / 4), buttonstyle.common_button_style, 2, radius={'border_radius': self.MAX_HEIGHT // 8}, center=(self.size_kf.value[0] - self.MAX_HEIGHT / 4, self.MAX_HEIGHT * 4 / 5))
+        self.movedown_button.bind(self.movedown)
+        self.movedown_button.join(self)
+        self.movedown_icon = fantas.IconText(chr(0xe60e), u.fonts['iconfont'], textstyle.DARKBLUE_TITLE_3, center=(self.movedown_button.rect.w / 2, self.movedown_button.rect.h / 2))
+        self.movedown_icon.join(self.movedown_button)
+        self.delete_button = fantas.SmoothColorButton((self.MAX_HEIGHT / 4, self.MAX_HEIGHT / 4), buttonstyle.warn_button_style, 2, radius={'border_radius': self.MAX_HEIGHT // 8}, center=(self.size_kf.value[0] - self.MAX_HEIGHT / 4, self.MAX_HEIGHT / 2))
+        self.delete_button.bind(self.delete)
+        self.delete_button.join(self)
+        self.delete_icon = fantas.IconText(chr(0xe66b), u.fonts['iconfont'], textstyle.DARKBLUE_TITLE_4, center=(self.delete_button.rect.w / 2 - 1, self.delete_button.rect.h / 2))
+        self.delete_icon.join(self.delete_button)
+
+        self.posi_flag = fantas.Text("+", u.fonts['deyi'], textstyle.DARKBLUE_TITLE_3, center=RIGHT_FLAG_POS)
+        self.posi_flag.join(self)
+        self.nega_flag = fantas.Text("-", u.fonts['deyi'], textstyle.DARKBLUE_TITLE_3, center=LEFT_FLAG_POS)
+        self.nega_flag.join(self)
+
+        self.posi_pos_kf = fantas.RectKeyFrame(self.posi_flag, 'center', LEFT_FLAG_POS, 10, fantas.harmonic_curve)
+        self.nega_pos_kf = fantas.RectKeyFrame(self.nega_flag, 'center', RIGHT_FLAG_POS, 10, fantas.harmonic_curve)
+
+        self.arrow = fantas.IconText(chr(0xe602), u.fonts['iconfont'], textstyle.DARKBLUE_TITLE_2, center=ARROW_POS)
+        self.arrow.join(self)
+        self.arrow_angle_kf = fantas.UiKeyFrame(self.arrow, 'angle', 180, 10, fantas.harmonic_curve)
+
+        ComponentUiIconMouseWidget(self.icon).apply_event()
+
+    def moveup(self):
+        pass
+
+    def movedown(self):
+        pass
+
+    def delete(self):
+        pass
+
+    def switch_Vref(self):
+        self.component.Vref = not self.component.Vref
+        if self.component.Vref:
+            self.posi_pos_kf.value = RIGHT_FLAG_POS
+            self.nega_pos_kf.value = LEFT_FLAG_POS
+        else:
+            self.posi_pos_kf.value = LEFT_FLAG_POS
+            self.nega_pos_kf.value = RIGHT_FLAG_POS
+        self.posi_pos_kf.launch('continue')
+        self.nega_pos_kf.launch('continue')
+
+    def switch_Iref(self):
+        self.component.Iref = not self.component.Iref
+        if self.component.Iref:
+            self.arrow_angle_kf.value = 0
+        else:
+            self.arrow_angle_kf.value = 180
+        self.arrow_angle_kf.launch('continue')
+
+class ResistorUi(ComponentUi):
+    def __init__(self, branchui, num, **anchor):
+        super().__init__(branchui, num, **anchor)
+
+        self.value_input_box = fantas.InputLine((120, 40), u.fonts['deyi'], inputstyle.small_style, textstyle.DARKBLUE_TITLE_4, "电阻值", 32, NumberInputWidget, bd=2, sc=color.GRAY, bg=color.LIGHTWHITE, radius={ 'border_radius': 12 }, midleft=(self.MAX_HEIGHT, self.MAX_HEIGHT / 2))
+        self.value_input_box.join(self)
+        self.value_unit_box = UnitSwitchButton(Core.R_table, 1, midleft=(self.value_input_box.rect.right + 10, self.value_input_box.rect.centery))
+        self.value_unit_box.join(self)
+
+
+class CapacitorUi(ComponentUi):
+    def __init__(self, branchui, num, **anchor):
+        super().__init__(branchui, num, **anchor)
+
+        self.value_input_box = fantas.InputLine((120, 40), u.fonts['deyi'], inputstyle.small_style, textstyle.DARKBLUE_TITLE_4, "电容值", 32, NumberInputWidget, bd=2, sc=color.GRAY, bg=color.LIGHTWHITE, radius={ 'border_radius': 12 }, midleft=(self.MAX_HEIGHT, self.MAX_HEIGHT / 2))
+        self.value_input_box.join(self)
+        self.value_unit_box = UnitSwitchButton(Core.C_table, 2, midleft=(self.value_input_box.rect.right + 10, self.value_input_box.rect.centery))
+        self.value_unit_box.join(self)
+
+class InductorUi(ComponentUi):
+    def __init__(self, branchui, num, **anchor):
+        super().__init__(branchui, num, **anchor)
+
+        self.value_input_box = fantas.InputLine((120, 40), u.fonts['deyi'], inputstyle.small_style, textstyle.DARKBLUE_TITLE_4, "电感值", 32, NumberInputWidget, bd=2, sc=color.GRAY, bg=color.LIGHTWHITE, radius={ 'border_radius': 12 }, midleft=(self.MAX_HEIGHT, self.MAX_HEIGHT / 2))
+        self.value_input_box.join(self)
+        self.value_unit_box = UnitSwitchButton(Core.L_table, 1, midleft=(self.value_input_box.rect.right + 10, self.value_input_box.rect.centery))
+        self.value_unit_box.join(self)
+
+class ImpedanceUi(ComponentUi):
+    def __init__(self, branchui, num, **anchor):
+        super().__init__(branchui, num, **anchor)
+
+        self.real_value_input_box = fantas.InputLine((110, 40), u.fonts['deyi'], inputstyle.small_style, textstyle.DARKBLUE_TITLE_4, "实部值", 32, NumberInputWidget, bd=2, sc=color.GRAY, bg=color.LIGHTWHITE, radius={ 'border_radius': 12 }, midleft=(self.MAX_HEIGHT, self.MAX_HEIGHT / 3))
+        self.real_value_input_box.join(self)
+        fantas.Text("+", u.fonts['deyi'], textstyle.DARKBLUE_TITLE_4, center=(self.real_value_input_box.rect.right + 10, self.real_value_input_box.rect.centery)).join(self)
+        self.imag_value_input_box = fantas.InputLine((110, 40), u.fonts['deyi'], inputstyle.small_style, textstyle.DARKBLUE_TITLE_4, "虚部值", 32, NumberInputWidget, bd=2, sc=color.GRAY, bg=color.LIGHTWHITE, radius={ 'border_radius': 12 }, midleft=(self.MAX_HEIGHT, self.MAX_HEIGHT * 2 / 3))
+        self.imag_value_input_box.join(self)
+        fantas.Text("j", u.fonts['deyi'], textstyle.DARKBLUE_TITLE_4, center=(self.imag_value_input_box.rect.right + 10, self.imag_value_input_box.rect.centery)).join(self)
+        self.value_unit_box = UnitSwitchButton(Core.R_table, 1, midleft=(self.imag_value_input_box.rect.right + 20, self.imag_value_input_box.rect.centery))
+        self.value_unit_box.join(self)
+
+class IndependentVoltageSourceUi(ComponentUi):
+    def __init__(self, branchui, num, **anchor):
+        super().__init__(branchui, num, **anchor)
+
+        self.value_input_box = fantas.InputLine((120, 40), u.fonts['deyi'], inputstyle.small_style, textstyle.DARKBLUE_TITLE_4, "电压值", 32, NumberInputWidget, bd=2, sc=color.GRAY, bg=color.LIGHTWHITE, radius={ 'border_radius': 12 }, midleft=(self.MAX_HEIGHT, self.MAX_HEIGHT / 2))
+        self.value_input_box.join(self)
+        self.value_unit_box = UnitSwitchButton(Core.V_table, 1, midleft=(self.value_input_box.rect.right + 10, self.value_input_box.rect.centery))
+        self.value_unit_box.join(self)
+
+class IndependentCurrentSourceUi(ComponentUi):
+    def __init__(self, branchui, num, **anchor):
+        super().__init__(branchui, num, **anchor)
+
+        self.value_input_box = fantas.InputLine((120, 40), u.fonts['deyi'], inputstyle.small_style, textstyle.DARKBLUE_TITLE_4, "电流值", 32, NumberInputWidget, bd=2, sc=color.GRAY, bg=color.LIGHTWHITE, radius={ 'border_radius': 12 }, midleft=(self.MAX_HEIGHT, self.MAX_HEIGHT / 2))
+        self.value_input_box.join(self)
+        self.value_unit_box = UnitSwitchButton(Core.I_table, 2, midleft=(self.value_input_box.rect.right + 10, self.value_input_box.rect.centery))
+        self.value_unit_box.join(self)
+
+VA_table = ("U", "I")
+
+class ControlComponentInputWidget(fantas.InputLine):
+    def stop_input(self):
+        super().stop_input()
+        
+
+class DependentVoltageSourceUi(ComponentUi):
+    def __init__(self, branchui, num, **anchor):
+        super().__init__(branchui, num, **anchor)
+
+        self.value_input_box = fantas.InputLine((100, 40), u.fonts['deyi'], inputstyle.small_style, textstyle.DARKBLUE_TITLE_4, "系数", 32, NumberInputWidget, bd=2, sc=color.GRAY, bg=color.LIGHTWHITE, radius={ 'border_radius': 12 }, midleft=(self.MAX_HEIGHT, self.MAX_HEIGHT * 2 / 3))
+        self.value_input_box.join(self)
+        self.value_unit_box = UnitSwitchButton(VA_table, 0, midleft=(self.value_input_box.rect.right + 10, self.value_input_box.rect.centery))
+        self.value_unit_box.join(self)
+
+        fantas.Text("控制元件", u.fonts['deyi'], textstyle.DARKBLUE_TITLE_4, midleft=(self.MAX_HEIGHT, self.MAX_HEIGHT / 3)).join(self)
+        self.control_component_input_box
+
+class DependentCurrentSourceUi(ComponentUi):
+    def __init__(self, branchui, num, **anchor):
+        super().__init__(branchui, num, **anchor)
+
+COMPONENTUI_CLASS = (ResistorUi, CapacitorUi, InductorUi, ImpedanceUi, IndependentVoltageSourceUi, IndependentCurrentSourceUi, DependentVoltageSourceUi, DependentCurrentSourceUi)

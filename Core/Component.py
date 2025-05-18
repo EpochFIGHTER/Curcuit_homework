@@ -140,6 +140,8 @@ class ElectricalBranch(Branch):
         else:
             return f"Branch({self.node_left} --- {self.node_right})"
 
+COMPONENT_DICT = {}
+
 class ElectricalComponent(Component):
     '''
     @brief 电气二端元件类
@@ -167,6 +169,7 @@ class ElectricalComponent(Component):
         self.prefix = prefix
         self.num = self.COUNTTABLE.get(prefix, 0) + 1    # 二端元件编号
         self.COUNTTABLE[prefix] = self.num
+        COMPONENT_DICT[f"{prefix}{self.num}"] = self
 
     def _get_I(self):
         return self._I
@@ -388,6 +391,7 @@ node_3 = ElectricalNode(3)    # 节点3
 nodes = [node_0, node_1, node_2, node_3]
 
 # 以下为测试用的电路结构搭建
+'''
 b = ElectricalBranch(node_0, node_1)
 c = IndependentVoltageSource(b)
 b.append(c)
@@ -419,6 +423,7 @@ c = Resistor(b)
 c.R = 2
 b.append(c)
 del b, c
+# '''
 
 if __name__ == "__main__":
     # 测试
