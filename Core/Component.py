@@ -5,7 +5,7 @@ import math
 if __name__ == "__main__":
     from topology import Node, Branch, Component
 else:
-    from Core.topology import Node, Branch, Component
+    from topology import Node, Branch, Component
 import numpy as np # type: ignore
 
 def intelligent_output(value, unit_table : list[str], unit_k) -> tuple[float, str]:
@@ -70,21 +70,25 @@ def set_freq(freq : float):
 set_freq(1000)    # 默认频率为 1kHz
 
 class ElectricalNode(Node):
-    '''
-    @brief 电气节点类
-    @detail 继承自节点类，增加了电气属性
-    '''
-
-    def __init__(self, num : int):
+    """
+    电气节点类，继承自基础节点类。
+    增加了电气属性（电压、连接支路）。
+    支持多支路并联。
+    """
+    def __init__(self, num: int):
         super().__init__(num)
-        self._V = None
-        self.branches = {}#跟踪连接到该节点的支路
-        
+        self._V = None  # 节点电压
+        self.branches = {}  # 记录与本节点相连的所有支路，键为对端节点，值为支路列表
+
     def add_branch(self, branch):
-        """添加连接到该节点的支路"""
+        """
+        添加连接到该节点的支路。支持多支路并联。
+        """
         other_node = branch.node_left if branch.node_right == self else branch.node_right
-        self.branches[other_node] = branch
-        
+        if other_node not in self.branches:
+            self.branches[other_node] = []
+        self.branches[other_node].append(branch)
+
     def _get_V(self):
         return self._V
     def _set_V(self, V):
@@ -99,30 +103,53 @@ class ElectricalNode(Node):
             return f"Node{self.num}"
 
 class ElectricalBranch(Branch):
-    '''
-    @brief 电气支路类
-    @detail 继承自支路类，增加了电气属性
-    '''
-    
-    def __init__(self, node1 : ElectricalNode, node2 : ElectricalNode):
+    """
+    电气支路类，继承自基础支路类。
+    增加了电气属性，支持多元件串联。
+    """
+    def __init__(self, node1: ElectricalNode, node2: ElectricalNode):
         super().__init__(node1, node2)
-        self._I = None
-        self._V1 = None
-        self._V2 = None
-        
+        self._I = None  # 支路电流
+        self._V1 = None # 左节点电势
+        self._V2 = None # 右节点电势
+        self.components = []  # 支路上的所有元件
         node1.add_branch(self)
         node2.add_branch(self)
 
+    def append(self, component):
+        """
+        向支路添加一个元件（串联）。
+        """
+        self.components.append(component)
+
+    def __iter__(self):
+        """
+        支持for循环遍历支路上的所有元件。
+        """
+        return iter(self.components)
+
+    def __contains__(self, component_class):
+        """
+        判断支路上是否包含某种类型的元件。
+        """
+        return any(isinstance(c, component_class) for c in self.components)
+
     def _get_Z(self):
+        # 计算支路总阻抗（所有元件串联）
         z = 0
         for c in self:
-            z += c.Z
+            if hasattr(c, 'Z') and c.Z is not None:
+                z += c.Z
         return z
-    Z : complex = property(_get_Z)    # 支路总阻抗，只读
+    Z = property(_get_Z)
 
     def _get_Y(self):
-        return 1 / self.Z
-    Y : complex = property(_get_Y)    # 支路总导纳，只读
+        # 计算支路总导纳
+        z = self.Z
+        if z == 0:
+            return complex(0, 0)
+        return 1 / z
+    Y = property(_get_Y)    # 支路总导纳，只读
 
     def _get_I(self):
         return self._I
