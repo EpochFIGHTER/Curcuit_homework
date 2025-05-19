@@ -1,3 +1,5 @@
+import math
+import cmath
 import pygame
 # from pathlib import Path
 
@@ -13,6 +15,7 @@ import Display.viewbox as viewbox
 from Display.widget import NumberInputWidget, UnitSwitchButton
 
 from Core.Component import nodes, ElectricalBranch, Resistor, Capacitor, Inductor, Impedance, IndependentVoltageSource, IndependentCurrentSource, DependentVoltageSource, DependentCurrentSource
+from Core.simulate import solve_circuit, print_circuit_solution
 import Core
 
 SIDEBAR_LEFT = u.WIDTH / 4 * 3
@@ -133,7 +136,7 @@ i.size = (about_padding * 3, about_padding * 3)
 i.join(about.page)
 
 fantas.Text("三独立节点电路通用", u.fonts['shuhei'], textstyle.DARKBLUE_TITLE_3, midleft=(about_padding / 2, about_padding * 4)).join(about.page)
-fantas.Text("正弦稳态电路分析器 V1.0", u.fonts['shuhei'], textstyle.DARKBLUE_TITLE_3, midleft=(about_padding / 2, about_padding * 4 + about_lineheight)).join(about.page)
+fantas.Text("正弦稳态电路分析器 V0.8", u.fonts['shuhei'], textstyle.DARKBLUE_TITLE_3, midleft=(about_padding / 2, about_padding * 4 + about_lineheight)).join(about.page)
 fantas.Label((about_padding * 3, 10), bg=color.DEEPWHITE, center=(about.page.rect.w / 2, about_padding * 4 + about_lineheight * 2)).join(about.page)
 fantas.Text("山东大学 2024-2025 学年", u.fonts['shuhei'], textstyle.DARKBLUE_TITLE_4, midleft=(about_padding / 2, about_padding * 4 + about_lineheight * 3)).join(about.page)
 fantas.Text("24级 电路课程设计作业", u.fonts['shuhei'], textstyle.DARKBLUE_TITLE_4, midleft=(about_padding / 2, about_padding * 4 + about_lineheight * 4)).join(about.page)
@@ -408,6 +411,7 @@ class BranchUi(fantas.Label):
         node1 = nodes[node1]
         node2 = nodes[node2]
         self.branch = ElectricalBranch(node1, node2)
+        viewbox.diagram_box.update()
 
         self.unfold_button = fantas.SmoothColorButton((self.INIT_HEIGHT - self.PADDING * 2, self.INIT_HEIGHT - self.PADDING * 2), buttonstyle.common_button_style, 2, radius={'border_radius': 16}, topleft=(self.PADDING, self.PADDING))
         self.unfold_button.join(self)
@@ -429,6 +433,7 @@ class BranchUi(fantas.Label):
         self.component_list = ComponentList(midtop=(self.rect.w / 2, self.INIT_HEIGHT))
         self.add_component_button = AddComponentButton(self, midtop=(self.rect.w / 2, self.PADDING))
         self.add_component_button.join(self.component_list)
+        self.unfold()
 
     def unfold(self):
         self.component_list.join(self)
@@ -579,7 +584,7 @@ class ChooseComponentButton(fantas.SmoothColorButton):
 
 LEFT_FLAG_POS = (30, 20)
 RIGHT_FLAG_POS = (130, 20)
-ARROW_POS = (80, 90)
+ARROW_POS = (80, 80)
 
 class ComponentUiIconMouseWidget(fantas.MouseBase):
     def __init__(self, ui):
@@ -606,6 +611,8 @@ class ComponentUi(fantas.Label):
         self.size_kf.launch('continue')
 
         self.component = COMPONENT_CLASS[num](self.branchui.branch)
+        self.branchui.branch.append(self.component)
+        viewbox.diagram_box.update()
 
         if color.IS_DARKMODE:
             self.icon = fantas.Ui(u.images[f"DARK_{IMG_NAME[num]}"], center=(self.MAX_HEIGHT / 2, self.MAX_HEIGHT / 4))
@@ -675,6 +682,9 @@ class ComponentUi(fantas.Label):
         else:
             self.arrow_angle_kf.value = 180
         self.arrow_angle_kf.launch('continue')
+    
+    def set_data(self):
+        return False
 
 class ResistorUi(ComponentUi):
     def __init__(self, branchui, num, **anchor):
@@ -684,6 +694,14 @@ class ResistorUi(ComponentUi):
         self.value_input_box.join(self)
         self.value_unit_box = UnitSwitchButton(Core.R_table, 1, midleft=(self.value_input_box.rect.right + 10, self.value_input_box.rect.centery))
         self.value_unit_box.join(self)
+    
+    def set_data(self):
+        r = self.value_input_box.inputwidget.get_number()
+        unit = Core.R_k[self.value_unit_box.unit]
+        if r is None:
+            return False
+        self.component.R = r / unit
+        return True
 
 
 class CapacitorUi(ComponentUi):
@@ -694,6 +712,14 @@ class CapacitorUi(ComponentUi):
         self.value_input_box.join(self)
         self.value_unit_box = UnitSwitchButton(Core.C_table, 2, midleft=(self.value_input_box.rect.right + 10, self.value_input_box.rect.centery))
         self.value_unit_box.join(self)
+    
+    def set_data(self):
+        c = self.value_input_box.inputwidget.get_number()
+        unit = Core.C_k[self.value_unit_box.unit]
+        if c is None:
+            return False
+        self.component.C = c / unit
+        return True
 
 class InductorUi(ComponentUi):
     def __init__(self, branchui, num, **anchor):
@@ -704,36 +730,87 @@ class InductorUi(ComponentUi):
         self.value_unit_box = UnitSwitchButton(Core.L_table, 1, midleft=(self.value_input_box.rect.right + 10, self.value_input_box.rect.centery))
         self.value_unit_box.join(self)
 
+    def set_data(self):
+        l = self.value_input_box.inputwidget.get_number()
+        unit = Core.L_k[self.value_unit_box.unit]
+        if l is None:
+            return False
+        self.component.L = l / unit
+        return True
+
 class ImpedanceUi(ComponentUi):
     def __init__(self, branchui, num, **anchor):
         super().__init__(branchui, num, **anchor)
 
-        self.real_value_input_box = fantas.InputLine((110, 40), u.fonts['deyi'], inputstyle.small_style, textstyle.DARKBLUE_TITLE_4, "实部值", 32, NumberInputWidget, bd=2, sc=color.GRAY, bg=color.LIGHTWHITE, radius={ 'border_radius': 12 }, midleft=(self.MAX_HEIGHT, self.MAX_HEIGHT / 3))
-        self.real_value_input_box.join(self)
-        fantas.Text("+", u.fonts['deyi'], textstyle.DARKBLUE_TITLE_4, center=(self.real_value_input_box.rect.right + 10, self.real_value_input_box.rect.centery)).join(self)
-        self.imag_value_input_box = fantas.InputLine((110, 40), u.fonts['deyi'], inputstyle.small_style, textstyle.DARKBLUE_TITLE_4, "虚部值", 32, NumberInputWidget, bd=2, sc=color.GRAY, bg=color.LIGHTWHITE, radius={ 'border_radius': 12 }, midleft=(self.MAX_HEIGHT, self.MAX_HEIGHT * 2 / 3))
-        self.imag_value_input_box.join(self)
-        fantas.Text("j", u.fonts['deyi'], textstyle.DARKBLUE_TITLE_4, center=(self.imag_value_input_box.rect.right + 10, self.imag_value_input_box.rect.centery)).join(self)
-        self.value_unit_box = UnitSwitchButton(Core.R_table, 1, midleft=(self.imag_value_input_box.rect.right + 20, self.imag_value_input_box.rect.centery))
+        self.value_input_box = fantas.InputLine((120, 40), u.fonts['deyi'], inputstyle.small_style, textstyle.DARKBLUE_TITLE_4, "阻抗值", 32, NumberInputWidget, bd=2, sc=color.GRAY, bg=color.LIGHTWHITE, radius={ 'border_radius': 12 }, midleft=(self.MAX_HEIGHT, self.MAX_HEIGHT / 3))
+        self.value_input_box.join(self)
+        self.value_unit_box = UnitSwitchButton(Core.R_table, 1, midleft=(self.value_input_box.rect.right + 10, self.value_input_box.rect.centery))
         self.value_unit_box.join(self)
+        self.angle_input_box = fantas.InputLine((100, 40), u.fonts['deyi'], inputstyle.small_style, textstyle.DARKBLUE_TITLE_4, "阻抗角", 32, NumberInputWidget, bd=2, sc=color.GRAY, bg=color.LIGHTWHITE, radius={ 'border_radius': 12 }, midleft=(self.MAX_HEIGHT + 20, self.MAX_HEIGHT * 2 / 3))
+        self.angle_input_box.join(self)
+        fantas.IconText(chr(0xe619), u.fonts['iconfont'], textstyle.DARKBLUE_TITLE_3, midright=(self.angle_input_box.rect.left - 8, self.angle_input_box.rect.centery)).join(self)
+        fantas.Text("°", u.fonts['deyi'], textstyle.DARKBLUE_TITLE_3, midleft=(self.angle_input_box.rect.right + 10, self.angle_input_box.rect.centery)).join(self)
+    
+    def set_data(self):
+        z = self.value_input_box.inputwidget.get_number()
+        unit = Core.R_k[self.value_unit_box.unit]
+        if z is None:
+            return False
+        a = self.angle_input_box.inputwidget.get_number()
+        if a is None:
+            return False
+        self.component.Z = cmath.rect(z / unit, math.radians(a))
+        return True
 
 class IndependentVoltageSourceUi(ComponentUi):
     def __init__(self, branchui, num, **anchor):
         super().__init__(branchui, num, **anchor)
+        self.arrow.rect.centery += 10
 
-        self.value_input_box = fantas.InputLine((120, 40), u.fonts['deyi'], inputstyle.small_style, textstyle.DARKBLUE_TITLE_4, "电压值", 32, NumberInputWidget, bd=2, sc=color.GRAY, bg=color.LIGHTWHITE, radius={ 'border_radius': 12 }, midleft=(self.MAX_HEIGHT, self.MAX_HEIGHT / 2))
+        self.value_input_box = fantas.InputLine((120, 40), u.fonts['deyi'], inputstyle.small_style, textstyle.DARKBLUE_TITLE_4, "电压值", 32, NumberInputWidget, bd=2, sc=color.GRAY, bg=color.LIGHTWHITE, radius={ 'border_radius': 12 }, midleft=(self.MAX_HEIGHT, self.MAX_HEIGHT / 3))
         self.value_input_box.join(self)
         self.value_unit_box = UnitSwitchButton(Core.V_table, 1, midleft=(self.value_input_box.rect.right + 10, self.value_input_box.rect.centery))
         self.value_unit_box.join(self)
+        self.angle_input_box = fantas.InputLine((100, 40), u.fonts['deyi'], inputstyle.small_style, textstyle.DARKBLUE_TITLE_4, "相位角", 32, NumberInputWidget, bd=2, sc=color.GRAY, bg=color.LIGHTWHITE, radius={ 'border_radius': 12 }, midleft=(self.MAX_HEIGHT + 20, self.MAX_HEIGHT * 2 / 3))
+        self.angle_input_box.join(self)
+        fantas.IconText(chr(0xe619), u.fonts['iconfont'], textstyle.DARKBLUE_TITLE_3, midright=(self.angle_input_box.rect.left - 8, self.angle_input_box.rect.centery)).join(self)
+        fantas.Text("°", u.fonts['deyi'], textstyle.DARKBLUE_TITLE_3, midleft=(self.angle_input_box.rect.right + 10, self.angle_input_box.rect.centery)).join(self)
+    
+    def set_data(self):
+        v = self.value_input_box.inputwidget.get_number()
+        unit = Core.V_k[self.value_unit_box.unit]
+        if v is None:
+            return False
+        a = self.angle_input_box.inputwidget.get_number()
+        if a is None:
+            return False
+        self.component.U = cmath.rect(v / unit, math.radians(a))
+        return True
 
 class IndependentCurrentSourceUi(ComponentUi):
     def __init__(self, branchui, num, **anchor):
         super().__init__(branchui, num, **anchor)
+        self.arrow.rect.centery += 10
 
-        self.value_input_box = fantas.InputLine((120, 40), u.fonts['deyi'], inputstyle.small_style, textstyle.DARKBLUE_TITLE_4, "电流值", 32, NumberInputWidget, bd=2, sc=color.GRAY, bg=color.LIGHTWHITE, radius={ 'border_radius': 12 }, midleft=(self.MAX_HEIGHT, self.MAX_HEIGHT / 2))
+        self.value_input_box = fantas.InputLine((120, 40), u.fonts['deyi'], inputstyle.small_style, textstyle.DARKBLUE_TITLE_4, "电流值", 32, NumberInputWidget, bd=2, sc=color.GRAY, bg=color.LIGHTWHITE, radius={ 'border_radius': 12 }, midleft=(self.MAX_HEIGHT, self.MAX_HEIGHT / 3))
         self.value_input_box.join(self)
         self.value_unit_box = UnitSwitchButton(Core.I_table, 2, midleft=(self.value_input_box.rect.right + 10, self.value_input_box.rect.centery))
         self.value_unit_box.join(self)
+        self.angle_input_box = fantas.InputLine((100, 40), u.fonts['deyi'], inputstyle.small_style, textstyle.DARKBLUE_TITLE_4, "相位角", 32, NumberInputWidget, bd=2, sc=color.GRAY, bg=color.LIGHTWHITE, radius={ 'border_radius': 12 }, midleft=(self.MAX_HEIGHT + 20, self.MAX_HEIGHT * 2 / 3))
+        self.angle_input_box.join(self)
+        fantas.IconText(chr(0xe619), u.fonts['iconfont'], textstyle.DARKBLUE_TITLE_3, midright=(self.angle_input_box.rect.left - 8, self.angle_input_box.rect.centery)).join(self)
+        fantas.Text("°", u.fonts['deyi'], textstyle.DARKBLUE_TITLE_3, midleft=(self.angle_input_box.rect.right + 10, self.angle_input_box.rect.centery)).join(self)
+    
+    def set_data(self):
+        i = self.value_input_box.inputwidget.get_number()
+        unit = Core.I_k[self.value_unit_box.unit]
+        if i is None:
+            return False
+        a = self.angle_input_box.inputwidget.get_number()
+        if a is None:
+            return False
+        self.component.I = cmath.rect(i / unit, math.radians(a))
+        return True
 
 VA_table = ("U", "I")
 
@@ -755,6 +832,17 @@ class DependentVoltageSourceUi(ComponentUi):
         fantas.Text("控制元件", u.fonts['deyi'], textstyle.DARKBLUE_TITLE_4, midleft=(self.MAX_HEIGHT, self.MAX_HEIGHT / 3)).join(self)
         self.control_component_input_box = fantas.InputLine((80, 40), u.fonts['deyi'], inputstyle.small_style, textstyle.DARKBLUE_TITLE_4, maxinput=8, inputwidget=ControlComponentInputWidget, bd=2, sc=color.GRAY, bg=color.LIGHTWHITE, radius={ 'border_radius': 12 }, midleft=(self.MAX_HEIGHT * 1.5, self.MAX_HEIGHT / 3))
         self.control_component_input_box.join(self)
+    
+    def set_data(self):
+        self.component.controler = Core.COMPONENT_DICT.get(self.control_component_input_box.text.text)
+        self.component.value = VA_table[self.value_unit_box.unit]
+        if self.component.controler is None:
+            return False
+        k = self.value_input_box.inputwidget.get_number()
+        if k is None:
+            return False
+        self.component.k = k
+        return True
 
 class DependentCurrentSourceUi(ComponentUi):
     def __init__(self, branchui, num, **anchor):
@@ -768,5 +856,100 @@ class DependentCurrentSourceUi(ComponentUi):
         fantas.Text("控制元件", u.fonts['deyi'], textstyle.DARKBLUE_TITLE_4, midleft=(self.MAX_HEIGHT, self.MAX_HEIGHT / 3)).join(self)
         self.control_component_input_box = fantas.InputLine((80, 40), u.fonts['deyi'], inputstyle.small_style, textstyle.DARKBLUE_TITLE_4, maxinput=8, inputwidget=ControlComponentInputWidget, bd=2, sc=color.GRAY, bg=color.LIGHTWHITE, radius={ 'border_radius': 12 }, midleft=(self.MAX_HEIGHT * 1.5, self.MAX_HEIGHT / 3))
         self.control_component_input_box.join(self)
+    
+    def set_data(self):
+        self.component.controler = Core.COMPONENT_DICT.get(self.control_component_input_box.text.text)
+        self.component.value = VA_table[self.value_unit_box.unit]
+        if self.component.controler is None:
+            return False
+        k = self.value_input_box.inputwidget.get_number()
+        if k is None:
+            return False
+        self.component.k = k
+        return True
 
 COMPONENTUI_CLASS = (ResistorUi, CapacitorUi, InductorUi, ImpedanceUi, IndependentVoltageSourceUi, IndependentCurrentSourceUi, DependentVoltageSourceUi, DependentCurrentSourceUi)
+
+
+SOLVE_METHODS = ('auto', 'lstsq', 'pinv', 'direct')
+class CalculateButton(fantas.SmoothColorButton):
+    HEIGHT = 120
+    LINEHEIGHT = 48
+    PADDING = 20
+
+    def __init__(self, **anchor):
+        super().__init__((PAGEWIDTH - LISTPADDING * 2, self.HEIGHT), buttonstyle.impoortant_button_style, 2, radius={'border_radius': 16}, **anchor)
+        self.anchor = "midtop"
+        self.method_num = 0
+        self.bind(self.calculate)
+
+        self.title_text = fantas.Text("求解电路", u.fonts['deyi'], dict(textstyle.DARKBLUE_TITLE_2), center=(self.rect.w / 2, self.rect.h / 2))
+        self.title_text.join(self)
+        self.title_text_color_kf = fantas.TextKeyFrame(self.title_text, 'fgcolor', color.FAKEWHITE, 10, fantas.harmonic_curve)
+
+        self.load_icon = fantas.IconText(chr(0xe61d), u.fonts['iconfont'], textstyle.FAKEWHITE_TITLE_3, center=(self.rect.h / 2, self.rect.h / 2))
+        self.load_icon_angle_kf = fantas.UiKeyFrame(self.load_icon, 'angle', -360, 48, fantas.harmonic_curve)
+        self.load_icon_angle_kf.bind_endupwith(self.load)
+
+        self.size_kf = fantas.LabelKeyFrame(self, 'size', (PAGEWIDTH - LISTPADDING * 2, self.HEIGHT), 10, fantas.harmonic_curve)
+
+        self.text_temp = []
+
+    def calculate(self):
+        f = viewbox.freq_inputline.inputwidget.get_number()
+        if f is None:
+            return
+        Core.set_freq(f)
+        for b in branch_list.kidgroup:
+            if isinstance(b, BranchUi):
+                for c in b.component_list.kidgroup:
+                    if isinstance(c, ComponentUi):
+                        if not c.set_data():
+                            return
+        self.ban()
+        self.title_text_color_kf.value = color.FAKEWHITE
+        self.title_text_color_kf.launch('continue')
+        self.load_icon.angle = 0
+        self.load_icon_angle_kf.launch('continue')
+        self.size_kf.value = (self.size_kf.value[0], self.size_kf.value[1] + self.LINEHEIGHT)
+        self.title_text.text = "正在计算电路..."
+        self.title_text.update_img()
+        self.load_icon.join(self)
+        self.add_text(f">>> 尝试使用 {SOLVE_METHODS[0]} 方法求解")
+
+    def load(self):
+        success, node_voltages, branch_currents = solve_circuit(nodes, solver_method=SOLVE_METHODS[self.method_num])
+        if success:
+            print_circuit_solution(nodes, node_voltages, branch_currents)
+            self.add_text(f">>> {SOLVE_METHODS[self.method_num]} 方法求解成功")
+            self.title_text.text = "求解已完成！"
+            self.title_text.update_img()
+            self.load_icon.leave()
+            return
+        else:
+            self.add_text(f">>> {SOLVE_METHODS[self.method_num]} 方法求解失败")
+            self.method_num += 1
+            if self.method_num >= len(SOLVE_METHODS):
+                self.method_num = 0
+                self.add_text("")
+                self.add_text(f">>> 请检查电路结构")
+                self.title_text.text = "求解失败！"
+                self.title_text.update_img()
+                self.load_icon.leave()
+                return
+            self.add_text("")
+            self.add_text(f">>> 尝试使用 {SOLVE_METHODS[self.method_num]} 方法求解")
+        self.load_icon.angle = 0
+        self.load_icon_angle_kf.launch('continue')
+
+    def add_text(self, text):
+        self.size_kf.value = (self.size_kf.value[0], self.size_kf.value[1] + self.LINEHEIGHT)
+        self.size_kf.launch('continue')
+        t = fantas.Text(text, u.fonts['deyi'], textstyle.FAKEWHITE_TITLE_3, midleft=(self.PADDING, self.size_kf.value[1] - self.LINEHEIGHT))
+        t.alpha = 0
+        t.join(self)
+        self.text_temp.append(t)
+        fantas.UiKeyFrame(t, 'alpha', 255, 10, fantas.harmonic_curve).launch('continue')
+
+calculate_button = CalculateButton(midtop=(PAGEWIDTH / 2, LISTPADDING))
+calculate_button.join(analysis.page)

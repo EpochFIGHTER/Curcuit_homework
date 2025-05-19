@@ -4,10 +4,10 @@
 """
 import numpy as np
 import math
-from Core.Component import ElectricalNode, ElectricalBranch, Resistor, Capacitor, Inductor
-from Core.Component import IndependentVoltageSource, IndependentCurrentSource, DependentVoltageSource, DependentCurrentSource
-from Core.Component import set_freq
-from Core.simulate import solve_circuit, print_circuit_solution
+from Component import ElectricalNode, ElectricalBranch, Resistor, Capacitor, Inductor
+from Component import IndependentVoltageSource, IndependentCurrentSource, DependentVoltageSource, DependentCurrentSource
+from Component import set_freq
+from simulate import solve_circuit, print_circuit_solution
 
 def build_test_circuit():
     """构建测试电路，包含各种类型元件和连接方式"""

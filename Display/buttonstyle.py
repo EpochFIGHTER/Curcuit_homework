@@ -43,5 +43,15 @@ warn_button_style = {
     'ban_bg': color.RED,
 }
 
+impoortant_button_style = {
+    'origin_bg': color.LIGHTWHITE,
+    'origin_sc': color.GRAY,
+    'origin_bd': 2,
+
+    'hover_bg': color.THEMEBLUE + offset_small,
+
+    'press_bg': color.THEMEBLUE - offset_small,
+    'ban_bg': color.THEMEBLUE,
+}
 
 del pygame, color

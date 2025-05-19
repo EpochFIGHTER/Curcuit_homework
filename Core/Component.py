@@ -70,12 +70,12 @@ def set_freq(freq : float):
 set_freq(1000)    # 默认频率为 1kHz
 
 class ElectricalNode(Node):
-    '''
-    @brief 电气节点类
-    @detail 继承自节点类，增加了电气属性
-    '''
-
-    def __init__(self, num : int):
+    """
+    电气节点类，继承自基础节点类。
+    增加了电气属性（电压、连接支路）。
+    支持多支路并联。
+    """
+    def __init__(self, num: int):
         super().__init__(num)
         self._V = None
 
@@ -86,34 +86,40 @@ class ElectricalNode(Node):
     V = property(_get_V, _set_V)    # 电压
 
     def __str__(self):
-        if self.V is not None:
-            v = intelligent_output(self.V, V_table, V_k)
-            return f"Node{self.num} V={v[0]:.2f}{v[1]}"
-        else:
-            return f"Node{self.num}"
+        # if self.V is not None:
+        #     v = intelligent_output(self.V, V_table, V_k)
+        #     return f"Node{self.num} V={v[0]:.2f}{v[1]}"
+        # else:
+        #     return f"Node{self.num}"
+        return f"Node{self.num}"
 
 class ElectricalBranch(Branch):
-    '''
-    @brief 电气支路类
-    @detail 继承自支路类，增加了电气属性
-    '''
-    
-    def __init__(self, node1 : ElectricalNode, node2 : ElectricalNode):
+    """
+    电气支路类，继承自基础支路类。
+    增加了电气属性，支持多元件串联。
+    """
+    def __init__(self, node1: ElectricalNode, node2: ElectricalNode):
         super().__init__(node1, node2)
         self._I = None
         self._V1 = None
         self._V2 = None
 
     def _get_Z(self):
+        # 计算支路总阻抗（所有元件串联）
         z = 0
         for c in self:
-            z += c.Z
+            if hasattr(c, 'Z') and c.Z is not None:
+                z += c.Z
         return z
-    Z : complex = property(_get_Z)    # 支路总阻抗，只读
+    Z = property(_get_Z)
 
     def _get_Y(self):
-        return 1 / self.Z
-    Y : complex = property(_get_Y)    # 支路总导纳，只读
+        # 计算支路总导纳
+        z = self.Z
+        if z == 0:
+            return complex(0, 0)
+        return 1 / z
+    Y = property(_get_Y)    # 支路总导纳，只读
 
     def _get_I(self):
         return self._I
@@ -195,6 +201,9 @@ class ElectricalComponent(Component):
         self._V2 = V
     V2 = property(_get_V2, _set_V2)    # 右端电势
 
+    def info(self):
+        pass
+
 
 class PowerSource(ElectricalComponent):
     '''
@@ -206,6 +215,7 @@ class IndependentVoltageSource(PowerSource):
     '''
     @brief 独立电压源类
     '''
+    IMG_NAME = "U"
 
     def __init__(self, branch : ElectricalBranch, prefix : str = "U"):
         super().__init__(branch, prefix)
@@ -216,11 +226,13 @@ class IndependentVoltageSource(PowerSource):
             return f"{self.prefix}{self.num} U={u[0]:.2f}{u[1]}"
         else:
             return f"{self.prefix}{self.num}"
+        
 
 class IndependentCurrentSource(PowerSource):
     '''
     @brief 独立电流源类
     '''
+    IMG_NAME = "I"
 
     def __init__(self, branch : ElectricalBranch, prefix : str = "I"):
         super().__init__(branch, prefix)
@@ -231,12 +243,18 @@ class IndependentCurrentSource(PowerSource):
             return f"{self.prefix}{self.num} I={i[0]:.2f}{i[1]}"
         else:
             return f"{self.prefix}{self.num}"
+    
+    def info(self):
+        i = intelligent_output(self.I, I_table, I_k)
+        return f"{i[0]:.3f}{i[1]}"
 
 class DependentVoltageSource(PowerSource):
     '''
     @brief 受控电压源类
     @detail 受控电压源的电压由其他元件的电流或电压控制
     '''
+    IMG_NAME = "kU"
+    
     def __init__(self, branch : ElectricalBranch, prefix : str = "U"):
         super().__init__(branch, prefix)
         self.controler : ElectricalComponent = None    # 控制元件
@@ -258,6 +276,8 @@ class DependentCurrentSource(PowerSource):
     @brief 受控电流源类
     @detail 受控电流源的电流由其他元件的电流或电压控制
     '''
+    IMG_NAME = "kI"
+    
     def __init__(self, branch : ElectricalBranch, prefix : str = "I"):
         super().__init__(branch, prefix)
         self.controler : ElectricalComponent = None    # 控制元件
@@ -280,8 +300,9 @@ class Impedance(ElectricalComponent):
     @detail 继承自电气二端元件类，增加了阻抗属性
             可以描述任何一个无源线性二端口网络
     '''
+    IMG_NAME = "Z"
 
-    def __init__(self, branch : ElectricalBranch, prefix : str = "Imp"):
+    def __init__(self, branch : ElectricalBranch, prefix : str = "Z"):
         super().__init__(branch, prefix)
         self._Z : complex = None
     
@@ -307,7 +328,8 @@ class Resistor(Impedance):
     @brief 电阻类
     @detail 继承自通用阻抗元件类，增加了电阻属性
     '''
-    
+    IMG_NAME = "R"
+
     def __init__(self, branch : ElectricalBranch, prefix : str = "R"):
         super().__init__(branch, prefix)
         self._R = None
@@ -334,7 +356,8 @@ class Capacitor(Impedance):
     @brief 电容类
     @detail 继承自通用阻抗元件类，增加了电容属性
     '''
-    
+    IMG_NAME = "C"
+
     def __init__(self, branch : ElectricalBranch, prefix : str = "C"):
         super().__init__(branch, prefix)
         self._C = None
@@ -361,7 +384,8 @@ class Inductor(Impedance):
     @brief 电感类
     @detail 继承自通用阻抗元件类，增加了电感属性
     '''
-    
+    IMG_NAME = "L"
+
     def __init__(self, branch : ElectricalBranch, prefix : str = "L"):
         super().__init__(branch, prefix)
         self._L = None

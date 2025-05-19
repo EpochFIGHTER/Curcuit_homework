@@ -3,10 +3,10 @@
 """
 import numpy as np
 import math
-from Core.Component import ElectricalNode, ElectricalBranch, Resistor, Capacitor, Inductor
-from Core.Component import IndependentVoltageSource, IndependentCurrentSource
-from Core.Component import set_freq
-from Core.simulate import solve_circuit, print_circuit_solution
+from Component import ElectricalNode, ElectricalBranch, Resistor, Capacitor, Inductor
+from Component import IndependentVoltageSource, IndependentCurrentSource
+from Component import set_freq
+from simulate import solve_circuit, print_circuit_solution
 
 def build_simple_circuit():
     """构建简单测试电路，只包含基本元件"""

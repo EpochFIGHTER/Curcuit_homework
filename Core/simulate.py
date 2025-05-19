@@ -38,7 +38,7 @@ def get_nodes_and_voltage_sources(nodes):
         for j in range(i + 1, len(nodes)):
             # 获取连接节点i和j的所有支路
             branches = nodes[i].branches.get(nodes[j], [])
-            
+
             # 遍历每个支路，查找电源
             for branch in branches:
                 for component in branch:
@@ -71,7 +71,7 @@ def build_mna_matrix(nodes, frequency=1000):
         mapping: 未知量映射字典，记录每个未知量在解向量中的索引
     """
     # 设置电路频率
-    from Component import set_freq
+    from Core.Component import set_freq
     set_freq(frequency)
     
     # 获取除参考节点外的节点和所有电压源
@@ -264,7 +264,7 @@ def build_mna_matrix(nodes, frequency=1000):
     
     return A, b, mapping
 
-def solve_circuit(nodes, frequency=1000, solver_method='auto'):
+def solve_circuit(nodes : list[ElectricalNode], frequency=1000, solver_method='auto'):
     """
     求解四节点电路（主函数）
     使用修正节点分析法
@@ -297,23 +297,23 @@ def solve_circuit(nodes, frequency=1000, solver_method='auto'):
         print("矩阵秩:", np.linalg.matrix_rank(A))
         print("矩阵大小:", A.size)
         print("映射节点:", [node.num for node in mapping.keys() if hasattr(node, 'num')])
-        
+
         # 基于求解方法选择不同的解算方法
         if solver_method == 'direct' or (solver_method == 'auto' and np.linalg.matrix_rank(A) == min(A.shape)):
             # 直接求解方法
             print("使用直接求解方法...")
             x = np.linalg.solve(A, b)
-        
+
         elif solver_method == 'lstsq' or solver_method == 'auto':
             # 最小二乘法
             print("使用最小二乘法求解...")
             x = np.linalg.lstsq(A, b, rcond=None)[0]
-            
+
         elif solver_method == 'pinv':
             # 伪逆法
             print("使用伪逆法求解...")
             x = np.dot(np.linalg.pinv(A), b)
-            
+
     except np.linalg.LinAlgError as e:
         print("错误：矩阵求解失败，电路可能不满足约束条件")
         print(f"详细错误: {str(e)}")
@@ -321,7 +321,7 @@ def solve_circuit(nodes, frequency=1000, solver_method='auto'):
     except Exception as e:
         print(f"错误：{str(e)}")
         return False, None, None
-    
+
     # 提取节点电压
     node_voltages = {}
     for node in nodes:
@@ -332,10 +332,10 @@ def solve_circuit(nodes, frequency=1000, solver_method='auto'):
             node_voltages[node] = x[idx]
       # 计算支路电流
     branch_currents = {}
-    
+
     # 收集所有受控源，便于后续处理
     dependent_sources = []
-    
+
     # 处理节点间所有支路
     for i in range(len(nodes)):
         for j in range(i + 1, len(nodes)):
@@ -355,12 +355,18 @@ def solve_circuit(nodes, frequency=1000, solver_method='auto'):
                     I = (v1 - v2) * branch.Y
                     branch_currents[branch] = I
                     branch.I = I  # 更新支路电流
-                
+
                 # 收集受控源
                 for component in branch:
                     if isinstance(component, (DependentVoltageSource, DependentCurrentSource)):
                         dependent_sources.append(component)
-    
+
+    # 更新节点电压
+    for node in nodes:
+        if node == nodes[0]:
+            continue
+        node.V = node_voltages[node]
+
     # 更新支路电压和元件的电压电流
     for i in range(len(nodes)):
         for j in range(i + 1, len(nodes)):
@@ -403,7 +409,7 @@ def print_circuit_solution(nodes, node_voltages, branch_currents):
         node_voltages: 节点电压字典
         branch_currents: 支路电流字典
     """
-    from Component import intelligent_output, V_table, V_k, I_table, I_k
+    from Core.Component import intelligent_output, V_table, V_k, I_table, I_k
     
     print("\n" + "="*50)
     print(" "*15 + "四节点电路仿真结果")

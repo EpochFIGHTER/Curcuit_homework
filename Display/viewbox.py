@@ -10,7 +10,7 @@ import Display.buttonstyle as buttonstyle
 import Display.inputstyle as inputstyle
 from Display.widget import NumberInputWidget, UnitSwitchButton
 
-from Core.Component import F_table
+from Core.Component import F_table, nodes
 
 grid_size = 60
 grid_line_width = 2
@@ -243,6 +243,9 @@ class DiagramBoxMouuseWidget(fantas.MouseBase):
             self.ui.size_kf.launch("continue")
             self.ui.mark_update()
 
+COMPONENT_SIZE = (180, 80)
+BRANCH_WIDTH = 4
+
 class DiagramBox(fantas.Ui):
     def __init__(self):
         super().__init__(pygame.Surface((0, 0), pygame.SRCALPHA))
@@ -250,24 +253,177 @@ class DiagramBox(fantas.Ui):
         self.mousewidget.apply_event()
         self.size_kf = fantas.UiKeyFrame(self, 'size', self.size, 10, fantas.slower_curve)
         self.pos_kf = fantas.RectKeyFrame(self, 'topleft', self.rect.topleft, 10, fantas.slower_curve)
+        self.diagram_widgets = []
 
-    def update(self, anchor=None):
+    def update(self):
+        self.clear_widgets()
+        self.draw_widgets()
+        t = min((ui.rect.top for ui in self.kidgroup), default=0)
         w = max((ui.rect.right for ui in self.kidgroup), default=0)
         h = max((ui.rect.bottom for ui in self.kidgroup), default=0)
         self.img = pygame.Surface((w, h), pygame.SRCALPHA)
+        if t < 0:
+            h -= t
+            # self.rect.top += t
+            for k in self.kidgroup:
+                k.rect.top -= t
         self.size = (w, h)
         self.apply_size()
+        self.size = self.size_kf.value = (w * self.mousewidget.r, h * self.mousewidget.r)
+
+    def draw_widgets(self):
+        global nodes, nodeuis, diagram_box, NodeUi
+        record = (
+            [0, False, 0],
+            [0, False, 0],
+            [0, False, 0],
+        )    # 记录绘制空间占用情况
+        distance = [viewbox.rect.w / 4, viewbox.rect.w / 4, viewbox.rect.w / 4]    # 节点之间的距离
+        for i in range(3):
+            node1 = nodes[0]
+            node2 = nodes[i + 1]
+            for b in node1.branches.get(node2, []):
+                distance[i] = max(distance[i], COMPONENT_SIZE[0] * len(b))
+        for i in range(2):
+            node1 = nodes[i]
+            node2 = nodes[i + 2]
+            for b in node1.branches.get(node2, []):
+                distance[i + 1] = max(distance[i + 1], COMPONENT_SIZE[0] * len(b) - distance[i])
+        for b in nodes[0].branches.get(nodes[3], []):
+            distance[2] = max(distance[2], COMPONENT_SIZE[0] * len(b) - distance[0] - distance[1])
+        for i in range(3):
+            nodeuis[i + 1].rect.centerx = nodeuis[i].rect.centerx + distance[i]
+            nodeuis[i + 1].name.rect.topright = nodeuis[i + 1].rect.bottomleft
+        # 绘制相邻支路
+        for i in range(3):
+            node1 = nodes[i]
+            node2 = nodes[i + 1]
+            for b in node1.branches.get(node2, []):
+                if record[i][1]:    #中间有连接
+                    uh = record[i][0]    # 上方高度
+                    dh = record[i][2]    # 下方高度
+                    if uh <= dh:    # 在上方绘制
+                        uh += 1
+                        record[i][0]  = uh
+                        l1 = fantas.Label((BRANCH_WIDTH, COMPONENT_SIZE[1] * 2 * uh - NodeUi.SIZE / 2), bg=color.DARKBLUE, radius={"border_top_left_radius": BRANCH_WIDTH // 2, "border_top_right_radius": BRANCH_WIDTH // 2}, midbottom=(nodeuis[i].rect.centerx, nodeuis[i].rect.centery - NodeUi.SIZE / 2))
+                        l2 = fantas.Label((BRANCH_WIDTH, COMPONENT_SIZE[1] * 2 * uh - NodeUi.SIZE / 2), bg=color.DARKBLUE, radius={"border_top_left_radius": BRANCH_WIDTH // 2, "border_top_right_radius": BRANCH_WIDTH // 2}, midbottom=(nodeuis[i + 1].rect.centerx, nodeuis[i + 1].rect.centery - NodeUi.SIZE / 2))
+                        l3 = fantas.Label((distance[i] + BRANCH_WIDTH, BRANCH_WIDTH), bg=color.DARKBLUE, radius={"border_radius": BRANCH_WIDTH // 2}, topleft=(nodeuis[i].rect.centerx - BRANCH_WIDTH // 2, nodeuis[i].rect.centery - COMPONENT_SIZE[1] * 2 * uh))
+                    else:           # 在下方绘制
+                        dh += 1
+                        record[i][2]  = dh
+                        l1 = fantas.Label((BRANCH_WIDTH, COMPONENT_SIZE[1] * 2 * dh - NodeUi.SIZE / 2), bg=color.DARKBLUE, radius={"border_bottom_left_radius": BRANCH_WIDTH // 2, "border_bottom_right_radius": BRANCH_WIDTH // 2}, midtop=(nodeuis[i].rect.centerx, nodeuis[i].rect.centery + NodeUi.SIZE / 2))
+                        l2 = fantas.Label((BRANCH_WIDTH, COMPONENT_SIZE[1] * 2 * dh - NodeUi.SIZE / 2), bg=color.DARKBLUE, radius={"border_bottom_left_radius": BRANCH_WIDTH // 2, "border_bottom_right_radius": BRANCH_WIDTH // 2}, midtop=(nodeuis[i + 1].rect.centerx, nodeuis[i + 1].rect.centery + NodeUi.SIZE / 2))
+                        l3 = fantas.Label((distance[i] + BRANCH_WIDTH, BRANCH_WIDTH), bg=color.DARKBLUE, radius={"border_radius": BRANCH_WIDTH // 2}, bottomleft=(nodeuis[i].rect.centerx - BRANCH_WIDTH // 2, nodeuis[i].rect.centery + COMPONENT_SIZE[1] * 2 * dh))
+                    l1.join(diagram_box)
+                    l2.join(diagram_box)
+                    l3.join(diagram_box)
+                    self.diagram_widgets.append(l1)
+                    self.diagram_widgets.append(l2)
+                    self.diagram_widgets.append(l3)
+                    self.draw_component(b, l3)
+                else:               # 中间没有连接，直接画在中间
+                    record[i][1] = True
+                    l = fantas.Label((distance[i] - NodeUi.SIZE, BRANCH_WIDTH), bg=color.DARKBLUE, midleft=(nodeuis[i].rect.centerx + NodeUi.SIZE / 2, nodeuis[i].rect.centery))
+                    l.join(diagram_box)
+                    self.diagram_widgets.append(l)
+                    self.draw_component(b, l)
+        # 绘制隔一个节点的支路
+        for i in range(2):
+            node1 = nodes[i]
+            node2 = nodes[i + 2]
+            for b in node1.branches.get(node2, []):
+                uh = max(record[i][0], record[i + 1][0])    # 上方高度
+                dh = max(record[i][2], record[i + 1][2])    # 下方高度
+                d = distance[i] + distance[i + 1]           # 节点之间的距离
+                if i == 0:    # 在上方绘制
+                    uh += 1
+                    record[i][0] = uh
+                    record[i + 1][0] = uh
+                    l1 = fantas.Label((BRANCH_WIDTH, COMPONENT_SIZE[1] * 2 * uh - NodeUi.SIZE / 2), bg=color.DARKBLUE, radius={"border_top_left_radius": BRANCH_WIDTH // 2, "border_top_right_radius": BRANCH_WIDTH // 2}, midbottom=(nodeuis[i].rect.centerx, nodeuis[i].rect.centery - NodeUi.SIZE / 2))
+                    l2 = fantas.Label((BRANCH_WIDTH, COMPONENT_SIZE[1] * 2 * uh - NodeUi.SIZE / 2), bg=color.DARKBLUE, radius={"border_top_left_radius": BRANCH_WIDTH // 2, "border_top_right_radius": BRANCH_WIDTH // 2}, midbottom=(nodeuis[i + 2].rect.centerx, nodeuis[i + 2].rect.centery - NodeUi.SIZE / 2))
+                    l3 = fantas.Label((d + BRANCH_WIDTH, BRANCH_WIDTH), bg=color.DARKBLUE, radius={"border_radius": BRANCH_WIDTH // 2}, topleft=(nodeuis[i].rect.centerx - BRANCH_WIDTH // 2, nodeuis[i].rect.centery - COMPONENT_SIZE[1] * 2 * uh))
+                else:           # 在下方绘制
+                    dh += 1
+                    record[i][2] = dh
+                    record[i + 1][2] = dh
+                    l1 = fantas.Label((BRANCH_WIDTH, COMPONENT_SIZE[1] * 2 * dh - NodeUi.SIZE / 2), bg=color.DARKBLUE, radius={"border_bottom_left_radius": BRANCH_WIDTH // 2, "border_bottom_right_radius": BRANCH_WIDTH // 2}, midtop=(nodeuis[i].rect.centerx, nodeuis[i].rect.centery + NodeUi.SIZE / 2))
+                    l2 = fantas.Label((BRANCH_WIDTH, COMPONENT_SIZE[1] * 2 * dh - NodeUi.SIZE / 2), bg=color.DARKBLUE, radius={"border_bottom_left_radius": BRANCH_WIDTH // 2, "border_bottom_right_radius": BRANCH_WIDTH // 2}, midtop=(nodeuis[i + 2].rect.centerx, nodeuis[i + 2].rect.centery + NodeUi.SIZE / 2))
+                    l3 = fantas.Label((d + BRANCH_WIDTH, BRANCH_WIDTH), bg=color.DARKBLUE, radius={"border_radius": BRANCH_WIDTH // 2}, bottomleft=(nodeuis[i].rect.centerx - BRANCH_WIDTH // 2, nodeuis[i].rect.centery + COMPONENT_SIZE[1] * 2 * dh))
+                l1.join(diagram_box)
+                l2.join(diagram_box)
+                l3.join(diagram_box)
+                self.diagram_widgets.append(l1)
+                self.diagram_widgets.append(l2)
+                self.diagram_widgets.append(l3)
+                self.draw_component(b, l3)
+        # 绘制隔两个节点的支路
+        node1 = nodes[0]
+        node2 = nodes[3]
+        for b in node1.branches.get(node2, []):
+            uh = max(record[0][0], record[1][0], record[2][0])
+            dh = max(record[0][2], record[1][2], record[2][2])
+            d = distance[0] + distance[1] + distance[2]
+            if uh <= dh:    # 在上方绘制
+                uh += 1
+                record[0][0] = uh
+                record[1][0] = uh
+                record[2][0] = uh
+                l1 = fantas.Label((BRANCH_WIDTH, COMPONENT_SIZE[1] * 2 * uh - NodeUi.SIZE / 2), bg=color.DARKBLUE, radius={"border_top_left_radius": BRANCH_WIDTH // 2, "border_top_right_radius": BRANCH_WIDTH // 2}, midbottom=(nodeuis[0].rect.centerx, nodeuis[0].rect.centery - NodeUi.SIZE / 2))
+                l2 = fantas.Label((BRANCH_WIDTH, COMPONENT_SIZE[1] * 2 * uh - NodeUi.SIZE / 2), bg=color.DARKBLUE, radius={"border_top_left_radius": BRANCH_WIDTH // 2, "border_top_right_radius": BRANCH_WIDTH // 2}, midbottom=(nodeuis[3].rect.centerx, nodeuis[3].rect.centery - NodeUi.SIZE / 2))
+                l3 = fantas.Label((d + BRANCH_WIDTH, BRANCH_WIDTH), bg=color.DARKBLUE, radius={"border_radius": BRANCH_WIDTH // 2}, topleft=(nodeuis[0].rect.centerx - BRANCH_WIDTH // 2, nodeuis[0].rect.centery - COMPONENT_SIZE[1] * 2 * uh))
+            else:           # 在下方绘制
+                dh += 1
+                record[0][2] = dh
+                record[1][2] = dh
+                record[2][2] = dh
+                l1 = fantas.Label((BRANCH_WIDTH, COMPONENT_SIZE[1] * 2 * dh - NodeUi.SIZE / 2), bg=color.DARKBLUE, radius={"border_bottom_left_radius": BRANCH_WIDTH // 2, "border_bottom_right_radius": BRANCH_WIDTH // 2}, midtop=(nodeuis[0].rect.centerx, nodeuis[0].rect.centery + NodeUi.SIZE / 2))
+                l2 = fantas.Label((BRANCH_WIDTH, COMPONENT_SIZE[1] * 2 * dh - NodeUi.SIZE / 2), bg=color.DARKBLUE, radius={"border_bottom_left_radius": BRANCH_WIDTH // 2, "border_bottom_right_radius": BRANCH_WIDTH // 2}, midtop=(nodeuis[3].rect.centerx, nodeuis[3].rect.centery + NodeUi.SIZE / 2))
+                l3 = fantas.Label((d + BRANCH_WIDTH, BRANCH_WIDTH), bg=color.DARKBLUE, radius={"border_radius": BRANCH_WIDTH // 2}, bottomleft=(nodeuis[0].rect.centerx - BRANCH_WIDTH // 2, nodeuis[0].rect.centery + COMPONENT_SIZE[1] * 2 * dh))
+            l1.join(diagram_box)
+            l2.join(diagram_box)
+            l3.join(diagram_box)
+            self.diagram_widgets.append(l1)
+            self.diagram_widgets.append(l2)
+            self.diagram_widgets.append(l3)
+            self.draw_component(b, l3)
+
+    def clear_widgets(self):
+        for ui in self.diagram_widgets:
+            ui.leave()
+        self.diagram_widgets.clear()
+
+    def draw_component(self, branch, branch_line):
+        l = len(branch)
+        if l == 0:
+            return
+        pad = branch_line.rect.w / (l + 1)
+        index = 1
+        for c in branch:
+            img_name = c.IMG_NAME
+            if color.IS_DARKMODE:
+                img_name = "DARK_" + img_name
+            i = fantas.Ui(u.images[img_name], center=(branch_line.rect.left + index * pad, branch_line.rect.centery))
+            index += 1
+            l = fantas.Label((130, BRANCH_WIDTH), bg=color.FAKEWHITE, center=i.rect.center)
+            n = fantas.Text(f"{c.prefix}{c.num}", u.fonts['deyi'], textstyle.DARKBLUE_TITLE_3, midtop=i.rect.midbottom)
+            l.join(diagram_box)
+            i.join(diagram_box)
+            n.join(diagram_box)
+            self.diagram_widgets.append(i)
+            self.diagram_widgets.append(l)
+            self.diagram_widgets.append(n)
 
 diagram_box = DiagramBox()
 diagram_box.join_to(viewbox, project_name.get_index())
 
 class NodeUi(fantas.IconText):
     numtext = chr(0xe6b5)
+    SIZE = 16
 
     def __init__(self, node_num):
         self.node_num = node_num
         super().__init__(self.numtext, u.fonts['iconfont'], textstyle.DARKBLUE_TITLE_3, center=(viewbox.rect.w * (node_num * 2 + 1) / 8, viewbox.rect.h / 2))
-        self.name = fantas.Text(f"n{node_num}", u.fonts['shuhei'], textstyle.DARKBLUE_TITLE_3, topright=self.rect.bottomleft)
+        self.name = fantas.Text(f"n{node_num}", u.fonts['shuhei'], textstyle.DARKBLUE_TITLE_3, midtop=self.rect.midbottom)
 
     def join(self, node):
         super().join(node)
@@ -281,6 +437,8 @@ node_0_icon.join(diagram_box)
 node_1_icon.join(diagram_box)
 node_2_icon.join(diagram_box)
 node_3_icon.join(diagram_box)
+
+nodeuis = [node_0_icon, node_1_icon, node_2_icon, node_3_icon]
 
 diagram_box.anchor = 'topleft'
 diagram_box.update()

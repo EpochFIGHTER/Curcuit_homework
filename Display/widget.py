@@ -23,6 +23,12 @@ class NumberInputWidget(fantas.InputLineWidget):
         if not is_number(self.ui.text.text):
             self.ui.clear()
 
+    def get_number(self):
+        if self.ui.text.text == '':
+            return None
+        else:
+            return float(self.ui.text.text)
+
 
 class UnitSwitchButton(fantas.SmoothColorButton):
     WIDTH = 40
