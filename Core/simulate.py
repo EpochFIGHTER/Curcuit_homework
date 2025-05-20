@@ -296,39 +296,39 @@ def solve_circuit(nodes : list[ElectricalNode], frequency=1000, solver_method='a
         print("错误：只支持四节点电路分析")
         return False, None, None
       # 构建和求解MNA矩阵方程
-    try:
-        A, b, mapping = build_mna_matrix(nodes, frequency)
-          # 打印矩阵状态用于调试
-        print("MNA矩阵维度:", A.shape)
-        print("矩阵条件数:", np.linalg.cond(A))
-        print("矩阵行列式:", np.linalg.det(A))
-        print("矩阵秩:", np.linalg.matrix_rank(A))
-        print("矩阵大小:", A.size)
-        print("映射节点:", [node.num for node in mapping.keys() if hasattr(node, 'num')])
+    # try:
+    A, b, mapping = build_mna_matrix(nodes, frequency)
+        # 打印矩阵状态用于调试
+    # print("MNA矩阵维度:", A.shape)
+    # print("矩阵条件数:", np.linalg.cond(A))
+    # print("矩阵行列式:", np.linalg.det(A))
+    # print("矩阵秩:", np.linalg.matrix_rank(A))
+    # print("矩阵大小:", A.size)
+    # print("映射节点:", [node.num for node in mapping.keys() if hasattr(node, 'num')])
 
-        # 基于求解方法选择不同的解算方法
-        if solver_method == 'direct' or (solver_method == 'auto' and np.linalg.matrix_rank(A) == min(A.shape)):
-            # 直接求解方法
-            print("使用直接求解方法...")
-            x = np.linalg.solve(A, b)
+    # 基于求解方法选择不同的解算方法
+    if solver_method == 'direct' or (solver_method == 'auto' and np.linalg.matrix_rank(A) == min(A.shape)):
+        # 直接求解方法
+        # print("使用直接求解方法...")
+        x = np.linalg.solve(A, b)
 
-        elif solver_method == 'lstsq' or solver_method == 'auto':
-            # 最小二乘法
-            print("使用最小二乘法求解...")
-            x = np.linalg.lstsq(A, b, rcond=None)[0]
+    elif solver_method == 'lstsq' or solver_method == 'auto':
+        # 最小二乘法
+        # print("使用最小二乘法求解...")
+        x = np.linalg.lstsq(A, b, rcond=None)[0]
 
-        elif solver_method == 'pinv':
-            # 伪逆法
-            print("使用伪逆法求解...")
-            x = np.dot(np.linalg.pinv(A), b)
+    elif solver_method == 'pinv':
+        # 伪逆法
+        # print("使用伪逆法求解...")
+        x = np.dot(np.linalg.pinv(A), b)
 
-    except np.linalg.LinAlgError as e:
-        print("错误：矩阵求解失败，电路可能不满足约束条件")
-        print(f"详细错误: {str(e)}")
-        return False, None, None
-    except Exception as e:
-        print(f"错误：{str(e)}")
-        return False, None, None
+    # except np.linalg.LinAlgError as e:
+    #     print("错误：矩阵求解失败，电路可能不满足约束条件")
+    #     print(f"详细错误: {str(e)}")
+    #     return False, None, None
+    # except Exception as e:
+    #     print(f"错误：{str(e)}")
+    #     return False, None, None
 
     # 提取节点电压
     node_voltages = {}
