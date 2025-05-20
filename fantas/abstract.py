@@ -45,7 +45,7 @@ class NodeBase:
 		# 将自己作为子节点添加至node中
 		node.append(self)
 
-	def join_to(self, node, index):
+	def join_to(self, node : "NodeBase", index):
 		# 添加至index位置
 		node.insert(self, index)
 

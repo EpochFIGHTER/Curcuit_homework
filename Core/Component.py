@@ -2,10 +2,11 @@
 @brief 这个文件定义了拓扑结构的电气化实现
 '''
 import math
-if __name__ == "__main__":
-    from topology import Node, Branch, Component
-else:
+import cmath
+try:
     from Core.topology import Node, Branch, Component
+except ModuleNotFoundError:
+    from topology import Node, Branch, Component
 import numpy as np # type: ignore
 
 def intelligent_output(value, unit_table : list[str], unit_k) -> tuple[float, str]:
@@ -21,21 +22,37 @@ def intelligent_output(value, unit_table : list[str], unit_k) -> tuple[float, st
         if unit_k[i] == 1:
             break
     v = value
-    if value < 1:
+    if abs(v) < 1:
         while i > 0:
             i -= 1
             v = unit_k[i] * value
-            if v >= 1:
+            if abs(v) >= 1:
                 break
     else:
         while i < len(unit_table) - 1:
             i += 1
             v = value * unit_k[i]
-            if v < 1:
+            if abs(v) < 1:
                 i -= 1
                 v = value * unit_k[i]
                 break
     return v, unit_table[i]
+
+def get_vp(num : complex):
+    """
+    @brief 获取复数的幅值和相位
+    @param num 复数
+    @return 幅值和相位
+    """
+    if not isinstance(num, complex):
+        num = complex(num)
+    value = abs(num)
+    phase = math.degrees(math.atan2(num.imag, num.real))
+    if phase == 180 or phase == -180:
+        phase = 0
+        value = -value
+    return value, phase
+
 
 # 电压单位表
 V_table = ['mV', 'V', 'kV', 'MV']
@@ -70,21 +87,15 @@ def set_freq(freq : float):
 set_freq(1000)    # 默认频率为 1kHz
 
 class ElectricalNode(Node):
-    '''
-    @brief 电气节点类
-    @detail 继承自节点类，增加了电气属性
-    '''
-
-    def __init__(self, num : int):
+    """
+    电气节点类，继承自基础节点类。
+    增加了电气属性（电压、连接支路）。
+    支持多支路并联。
+    """
+    def __init__(self, num: int):
         super().__init__(num)
         self._V = None
-        self.branches = {}#跟踪连接到该节点的支路
-        
-    def add_branch(self, branch):
-        """添加连接到该节点的支路"""
-        other_node = branch.node_left if branch.node_right == self else branch.node_right
-        self.branches[other_node] = branch
-        
+
     def _get_V(self):
         return self._V
     def _set_V(self, V):
@@ -93,36 +104,39 @@ class ElectricalNode(Node):
 
     def __str__(self):
         if self.V is not None:
-            v = intelligent_output(self.V, V_table, V_k)
-            return f"Node{self.num} V={v[0]:.2f}{v[1]}"
+            v, p = get_vp(self.V)
+            v, unit = intelligent_output(v, V_table, V_k)
+            return f"Node{self.num} V={v:.2f}∠{p:.2f}° {unit}"
         else:
             return f"Node{self.num}"
 
 class ElectricalBranch(Branch):
-    '''
-    @brief 电气支路类
-    @detail 继承自支路类，增加了电气属性
-    '''
-    
-    def __init__(self, node1 : ElectricalNode, node2 : ElectricalNode):
+    """
+    电气支路类，继承自基础支路类。
+    增加了电气属性，支持多元件串联。
+    """
+    def __init__(self, node1: ElectricalNode, node2: ElectricalNode):
         super().__init__(node1, node2)
         self._I = None
         self._V1 = None
         self._V2 = None
-        
-        node1.add_branch(self)
-        node2.add_branch(self)
 
     def _get_Z(self):
+        # 计算支路总阻抗（所有元件串联）
         z = 0
         for c in self:
-            z += c.Z
+            if hasattr(c, 'Z') and c.Z is not None:
+                z += c.Z
         return z
-    Z : complex = property(_get_Z)    # 支路总阻抗，只读
+    Z = property(_get_Z)
 
     def _get_Y(self):
-        return 1 / self.Z
-    Y : complex = property(_get_Y)    # 支路总导纳，只读
+        # 计算支路总导纳
+        z = self.Z
+        if z == 0:
+            return complex(0, 0)
+        return 1 / z
+    Y = property(_get_Y)    # 支路总导纳，只读
 
     def _get_I(self):
         return self._I
@@ -144,10 +158,13 @@ class ElectricalBranch(Branch):
 
     def __str__(self):
         if self.I is not None:
-            i = intelligent_output(self.I, I_table, I_k)
-            return f"Branch({self.node_left} --- {self.node_right}) I={self.I:.2f}{i[1]}"
+            v, p = get_vp(self.I)
+            i, unit = intelligent_output(v, I_table, I_k)
+            return f"Branch({self.node_left} --- {self.node_right}) I={i:.2f}∠{p:.2f}° {unit}"
         else:
             return f"Branch({self.node_left} --- {self.node_right})"
+
+COMPONENT_DICT = {}
 
 class ElectricalComponent(Component):
     '''
@@ -176,6 +193,7 @@ class ElectricalComponent(Component):
         self.prefix = prefix
         self.num = self.COUNTTABLE.get(prefix, 0) + 1    # 二端元件编号
         self.COUNTTABLE[prefix] = self.num
+        COMPONENT_DICT[f"{prefix}{self.num}"] = self
 
     def _get_I(self):
         return self._I
@@ -184,6 +202,8 @@ class ElectricalComponent(Component):
     I = property(_get_I, _set_I)    # 电流
 
     def _get_U(self):
+        if self._U is None:
+            return None
         return self._U
     def _set_U(self, V):
         self._U = V
@@ -201,6 +221,9 @@ class ElectricalComponent(Component):
         self._V2 = V
     V2 = property(_get_V2, _set_V2)    # 右端电势
 
+    def info(self):
+        pass
+
 
 class PowerSource(ElectricalComponent):
     '''
@@ -212,41 +235,52 @@ class IndependentVoltageSource(PowerSource):
     '''
     @brief 独立电压源类
     '''
+    IMG_NAME = "U"
 
     def __init__(self, branch : ElectricalBranch, prefix : str = "U"):
         super().__init__(branch, prefix)
     
     def __str__(self):
         if self.U is not None:
-            u = intelligent_output(self.U, V_table, V_k)
-            return f"{self.prefix}{self.num} U={u[0]:.2f}{u[1]}"
+            v, p = get_vp(self.U)
+            u, unit = intelligent_output(v, V_table, V_k)
+            return f"{self.prefix}{self.num} U={u:.2f}∠{p:.2f}° {unit}"
         else:
             return f"{self.prefix}{self.num}"
+        
 
 class IndependentCurrentSource(PowerSource):
     '''
     @brief 独立电流源类
     '''
+    IMG_NAME = "I"
 
     def __init__(self, branch : ElectricalBranch, prefix : str = "I"):
         super().__init__(branch, prefix)
     
     def __str__(self):
         if self.I is not None:
-            i = intelligent_output(self.I, I_table, I_k)
-            return f"{self.prefix}{self.num} I={i[0]:.2f}{i[1]}"
+            v, p = get_vp(self.I)
+            i, unit = intelligent_output(v, I_table, I_k)
+            return f"{self.prefix}{self.num} I={i:.2f}∠{p:.2f}° {unit}"
         else:
             return f"{self.prefix}{self.num}"
+    
+    def info(self):
+        i = intelligent_output(self.I, I_table, I_k)
+        return f"{i[0]:.3f}{i[1]}"
 
 class DependentVoltageSource(PowerSource):
     '''
     @brief 受控电压源类
     @detail 受控电压源的电压由其他元件的电流或电压控制
     '''
+    IMG_NAME = "kU"
+    
     def __init__(self, branch : ElectricalBranch, prefix : str = "U"):
         super().__init__(branch, prefix)
         self.controler : ElectricalComponent = None    # 控制元件
-        self.value : str = None                        # 控制量，U 或 I
+        self.value : str = "U"                        # 控制量，U 或 I
         self.k : float = None                          # 增益系数
 
     def _get_U(self):
@@ -264,10 +298,12 @@ class DependentCurrentSource(PowerSource):
     @brief 受控电流源类
     @detail 受控电流源的电流由其他元件的电流或电压控制
     '''
+    IMG_NAME = "kI"
+    
     def __init__(self, branch : ElectricalBranch, prefix : str = "I"):
         super().__init__(branch, prefix)
         self.controler : ElectricalComponent = None    # 控制元件
-        self.value : str = None                        # 控制量，U 或 I
+        self.value : str = "U"                        # 控制量，U 或 I
         self.k : float = None                          # 增益系数
     
     def _get_I(self):
@@ -286,8 +322,9 @@ class Impedance(ElectricalComponent):
     @detail 继承自电气二端元件类，增加了阻抗属性
             可以描述任何一个无源线性二端口网络
     '''
+    IMG_NAME = "Z"
 
-    def __init__(self, branch : ElectricalBranch, prefix : str = "Imp"):
+    def __init__(self, branch : ElectricalBranch, prefix : str = "Z"):
         super().__init__(branch, prefix)
         self._Z : complex = None
     
@@ -303,8 +340,9 @@ class Impedance(ElectricalComponent):
 
     def __str__(self):
         if self.Z is not None:
-            z = intelligent_output(abs(self.Z), R_table, R_k)
-            return f"{self.prefix}{self.num} Z={z[0]:.2f}{z[1]}"
+            v, p = get_vp(self.Z)
+            z, unit = intelligent_output(v, R_table, R_k)
+            return f"{self.prefix}{self.num} Z={z:.2f}∠{p:.2f}° {unit}"
         else:
             return f"{self.prefix}{self.num}"
 
@@ -313,7 +351,8 @@ class Resistor(Impedance):
     @brief 电阻类
     @detail 继承自通用阻抗元件类，增加了电阻属性
     '''
-    
+    IMG_NAME = "R"
+
     def __init__(self, branch : ElectricalBranch, prefix : str = "R"):
         super().__init__(branch, prefix)
         self._R = None
@@ -340,7 +379,8 @@ class Capacitor(Impedance):
     @brief 电容类
     @detail 继承自通用阻抗元件类，增加了电容属性
     '''
-    
+    IMG_NAME = "C"
+
     def __init__(self, branch : ElectricalBranch, prefix : str = "C"):
         super().__init__(branch, prefix)
         self._C = None
@@ -367,7 +407,8 @@ class Inductor(Impedance):
     @brief 电感类
     @detail 继承自通用阻抗元件类，增加了电感属性
     '''
-    
+    IMG_NAME = "L"
+
     def __init__(self, branch : ElectricalBranch, prefix : str = "L"):
         super().__init__(branch, prefix)
         self._L = None
@@ -389,52 +430,6 @@ class Inductor(Impedance):
         else:
             return f"{self.prefix}{self.num}"
 
-
-def build_A(node_0, node_1, node_2, node_3, frequency=1000):
-    '''
-    @brief 构建自导纳矩阵A应用于RLC电路分析
-    '''
-    global OMEGA
-    OMEGA = 2 * math.pi * frequency
-
-    # 节点映射表
-    node_pairs = [
-        (node_0, node_1),
-        (node_0, node_2),
-        (node_0, node_3),
-        (node_1, node_2),
-        (node_1, node_3),
-        (node_2, node_3)
-    ]
-
-    # 计算各支路的导纳
-    branch_admittances = {}
-    for n1, n2 in node_pairs:
-        branch = n1.branches.get(n2)  # 使用字典的get方法
-        if branch and branch.Z != complex(0, 0):
-            branch_admittances[(n1, n2)] = branch.Y
-        else:
-            branch_admittances[(n1, n2)] = complex(0, 0)
-
-    # 自导纳计算
-    a11 = branch_admittances[(node_0, node_1)] + branch_admittances[(node_1, node_2)] + branch_admittances[(node_1, node_3)]
-    a22 = branch_admittances[(node_0, node_2)] + branch_admittances[(node_1, node_2)] + branch_admittances[(node_2, node_3)]
-    a33 = branch_admittances[(node_0, node_3)] + branch_admittances[(node_1, node_3)] + branch_admittances[(node_2, node_3)]
-
-    # 互导纳计算
-    a12 = branch_admittances[(node_1, node_2)]
-    a13 = branch_admittances[(node_1, node_3)]
-    a23 = branch_admittances[(node_2, node_3)]
-
-    A = np.array([[a11, -a12, -a13],
-                  [-a12, a22, -a23],
-                  [-a13, -a23, a33]])
-    return A
-
-
-
-
-
 node_0 = ElectricalNode(0)    # 参考节点
 node_0.V = 0                  # 参考节点电压为0
 node_1 = ElectricalNode(1)    # 节点1
@@ -443,6 +438,7 @@ node_3 = ElectricalNode(3)    # 节点3
 nodes = [node_0, node_1, node_2, node_3]
 
 # 以下为测试用的电路结构搭建
+'''
 b = ElectricalBranch(node_0, node_1)
 c = IndependentVoltageSource(b)
 b.append(c)
@@ -474,13 +470,8 @@ c = Resistor(b)
 c.R = 2
 b.append(c)
 del b, c
+# '''
 
 if __name__ == "__main__":
     # 测试
-    print("电气拓扑结构：")
-    for i in range(0, 3):
-        for j in range(i + 1, 4):
-            for b in nodes[i].branches[nodes[j]]:
-                print(b)
-                for c in b:
-                    print(c)
+    print(intelligent_output(0.001, V_table, V_k))

@@ -30,6 +30,7 @@ def show_start_window(ms):
     icon.size = (128, 128)
     icon.join(u.root)
 
+
     main_title = fantas.Text("三独立节点电路通用 - 正弦稳态分析器", fonts['shuhei'], textstyle.DARKBLUE_TITLE_3, midleft=(bottom_box.rect.h, bottom_box.rect.top + bottom_box.rect.h / 4))
     main_title.join(u.root)
 
@@ -43,4 +44,5 @@ def show_start_window(ms):
     
     pygame.time.set_timer(pygame.QUIT, ms, 1)
     u.mainloop(quit)
+
 from Core.Component import node_0, node_1, node_2, node_3

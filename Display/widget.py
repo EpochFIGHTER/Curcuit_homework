@@ -23,15 +23,21 @@ class NumberInputWidget(fantas.InputLineWidget):
         if not is_number(self.ui.text.text):
             self.ui.clear()
 
+    def get_number(self):
+        if self.ui.text.text == '':
+            return None
+        else:
+            return float(self.ui.text.text)
+
 
 class UnitSwitchButton(fantas.SmoothColorButton):
     WIDTH = 40
     HEIGHT = 40
 
-    def __init__(self, unit_table, **anchor):
+    def __init__(self, unit_table, unit_num=0, **anchor):
         super().__init__((self.WIDTH, self.HEIGHT), buttonstyle.common_button_style, 2, radius={'border_radius': 12}, **anchor)
         self.unit_table = unit_table
-        self.unit = 0
+        self.unit = unit_num
         self.text = fantas.Text(self.unit_table[self.unit], u.fonts['deyi'], textstyle.DARKBLUE_TITLE_4, center=(self.rect.w / 2, self.rect.h / 2))
         self.text.join(self)
         self.bind(self.switch)

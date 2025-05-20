@@ -412,11 +412,9 @@ class UiGroup(Ui):
         if anchor is None:
             anchor = self.anchor
         pos = getattr(self.rect, anchor)
-        length = len(self.kidgroup)
-        if length == 1:
-            self.rect.size = self.kidgroup[0].rect.size
-        elif length != 0:
-            self.rect.size = self.kidgroup[0].rect.unionall([ui.rect for ui in self.kidgroup[1:]]).size
+        w = max((ui.rect.right for ui in self.kidgroup), default=0)
+        h = max((ui.rect.bottom for ui in self.kidgroup), default=0)
+        self.rect.size = (w, h)
         setattr(self.rect, anchor, pos)
 
     def render(self, target=None):

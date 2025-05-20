@@ -16,9 +16,11 @@ common_button_style = {
     'press_bg': color.GRAY - offset_large,
     'press_sc': color.GRAY,
     'press_bd': 2,
+
+    'ban_bg': color.LIGHTWHITE,
 }
 
-add_branch_list_button_style = {
+branch_list_button_style = {
     'origin_bg': color.LIGHTGREEN,
     'origin_sc': color.DEEPWHITE,
     'origin_bd': 2,
@@ -30,4 +32,26 @@ add_branch_list_button_style = {
     'ban_bg': color.LIGHTGREEN,
 }
 
-del pygame, offset_large, color
+warn_button_style = {
+    'origin_bg': color.LIGHTWHITE,
+    'origin_sc': color.GRAY,
+    'origin_bd': 2,
+
+    'hover_bg': color.RED + offset_small,
+
+    'press_bg': color.RED - offset_small,
+    'ban_bg': color.RED,
+}
+
+impoortant_button_style = {
+    'origin_bg': color.LIGHTWHITE,
+    'origin_sc': color.GRAY,
+    'origin_bd': 2,
+
+    'hover_bg': color.THEMEBLUE + offset_small,
+
+    'press_bg': color.THEMEBLUE - offset_small,
+    'ban_bg': color.THEMEBLUE,
+}
+
+del pygame, color

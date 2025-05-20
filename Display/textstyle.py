@@ -16,6 +16,11 @@ DARKBLUE_TITLE_3 = {
     'size': 32,
 }
 
+DARKBLUE_TITLE_3_5 = {
+    'fgcolor': color.DARKBLUE,
+    'size': 28,
+}
+
 DARKBLUE_TITLE_4 = {
     'fgcolor': color.DARKBLUE,
     'size': 24,
@@ -44,6 +49,11 @@ GRAY_TITLE_3 = {
 GRAY_TITLE_4 = {
     'fgcolor': color.GRAY,
     'size': 24,
+}
+
+FAKEWHITE_TITLE_3 = {
+    'fgcolor': color.FAKEWHITE,
+    'size': 32,
 }
 
 del pygame, color

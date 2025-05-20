@@ -1,32 +1,40 @@
 import pygame
+from fantas import uimanager as u
+import Display.color as color
 
-BLACK      = pygame.Color("#000000")
-FAKEWHITE  = pygame.Color("#e3e3e3")
-DARKBLUE   = pygame.Color("#003658")
-LIGHTWHITE = pygame.Color("#faf7ff")
-DEEPWHITE  = pygame.Color("#c4c7cc")
-THEMEBLUE  = pygame.Color("#8685ef")
-GRAY       = pygame.Color("#aca9bb")
+IS_DARKMODE = False
+BLACK       = pygame.Color("#000000")
+WHITE       = pygame.Color("#ffffff")
+FAKEWHITE   = pygame.Color("#e3e3e3")
+DARKBLUE    = pygame.Color("#003658")
+LIGHTWHITE  = pygame.Color("#faf7ff")
+DEEPWHITE   = pygame.Color("#c4c7cc")
+THEMEBLUE   = pygame.Color("#8685ef")
+GRAY        = pygame.Color("#aca9bb")
 LIGHTGREEN  = pygame.Color("#c5ebde")
+RED         = pygame.Color("#fa575d")
 
-# 暗黑模式
-def use_dark_mode():
-    global BLACK, FAKEWHITE, DARKBLUE, LIGHTWHITE, DEEPWHITE, THEMEBLUE, GRAY, LIGHTGREEN
-    BLACK      = pygame.Color("#ffffff") - BLACK
-    FAKEWHITE  = pygame.Color("#ffffff") - FAKEWHITE
-    DARKBLUE   = pygame.Color("#ffffff") - DARKBLUE
-    LIGHTWHITE = pygame.Color("#ffffff") - LIGHTWHITE
-    DEEPWHITE  = pygame.Color("#ffffff") - DEEPWHITE
-    THEMEBLUE  = pygame.Color("#ffffff") - THEMEBLUE
-    GRAY       = pygame.Color("#ffffff") - GRAY
-    LIGHTGREEN  = pygame.Color("#ffffff") - LIGHTGREEN
-    BLACK.a      = 255
-    FAKEWHITE.a  = 255
-    DARKBLUE.a   = 255
-    LIGHTWHITE.a = 255
-    DEEPWHITE.a  = 255
-    THEMEBLUE.a  = 255
-    GRAY.a       = 255
-    LIGHTGREEN.a  = 255
+# 反色
+def flip_color(color):
+    c = WHITE - color
+    c.a = 255
+    return c
+
+# 切换颜色模式
+def switch_dark_mode():
+    global IS_DARKMODE, u
+    u.settings['DARK_MODE'] = IS_DARKMODE = not IS_DARKMODE
+    color.BLACK       = flip_color(color.BLACK)
+    color.FAKEWHITE   = flip_color(color.FAKEWHITE)
+    color.DARKBLUE    = flip_color(color.DARKBLUE)
+    color.LIGHTWHITE  = flip_color(color.LIGHTWHITE)
+    color.DEEPWHITE   = flip_color(color.DEEPWHITE)
+    color.THEMEBLUE   = flip_color(color.THEMEBLUE)
+    color.GRAY        = flip_color(color.GRAY)
+    color.LIGHTGREEN  = flip_color(color.LIGHTGREEN)
+    color.RED         = flip_color(color.RED)
+
+if u.settings['DARK_MODE']:
+    switch_dark_mode()
 
 del pygame
