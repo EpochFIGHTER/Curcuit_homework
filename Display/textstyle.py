@@ -16,6 +16,11 @@ DARKBLUE_TITLE_3 = {
     'size': 32,
 }
 
+DARKBLUE_TITLE_3_5 = {
+    'fgcolor': color.DARKBLUE,
+    'size': 28,
+}
+
 DARKBLUE_TITLE_4 = {
     'fgcolor': color.DARKBLUE,
     'size': 24,

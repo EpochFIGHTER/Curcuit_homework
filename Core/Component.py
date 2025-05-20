@@ -2,11 +2,12 @@
 @brief 这个文件定义了拓扑结构的电气化实现
 '''
 import math
-if __name__ == "__main__":
-    from topology import Node, Branch, Component
-else:
+import cmath
+try:
     from Core.topology import Node, Branch, Component
-
+except ModuleNotFoundError:
+    from topology import Node, Branch, Component
+import numpy as np # type: ignore
 
 def intelligent_output(value, unit_table : list[str], unit_k) -> tuple[float, str]:
     '''
@@ -21,21 +22,37 @@ def intelligent_output(value, unit_table : list[str], unit_k) -> tuple[float, st
         if unit_k[i] == 1:
             break
     v = value
-    if value < 1:
+    if abs(v) < 1:
         while i > 0:
             i -= 1
             v = unit_k[i] * value
-            if v >= 1:
+            if abs(v) >= 1:
                 break
     else:
         while i < len(unit_table) - 1:
             i += 1
             v = value * unit_k[i]
-            if v < 1:
+            if abs(v) < 1:
                 i -= 1
                 v = value * unit_k[i]
                 break
     return v, unit_table[i]
+
+def get_vp(num : complex):
+    """
+    @brief 获取复数的幅值和相位
+    @param num 复数
+    @return 幅值和相位
+    """
+    if not isinstance(num, complex):
+        num = complex(num)
+    value = abs(num)
+    phase = math.degrees(math.atan2(num.imag, num.real))
+    if phase == 180 or phase == -180:
+        phase = 0
+        value = -value
+    return value, phase
+
 
 # 电压单位表
 V_table = ['mV', 'V', 'kV', 'MV']
@@ -86,12 +103,12 @@ class ElectricalNode(Node):
     V = property(_get_V, _set_V)    # 电压
 
     def __str__(self):
-        # if self.V is not None:
-        #     v = intelligent_output(self.V, V_table, V_k)
-        #     return f"Node{self.num} V={v[0]:.2f}{v[1]}"
-        # else:
-        #     return f"Node{self.num}"
-        return f"Node{self.num}"
+        if self.V is not None:
+            v, p = get_vp(self.V)
+            v, unit = intelligent_output(v, V_table, V_k)
+            return f"Node{self.num} V={v:.2f}∠{p:.2f}° {unit}"
+        else:
+            return f"Node{self.num}"
 
 class ElectricalBranch(Branch):
     """
@@ -141,8 +158,9 @@ class ElectricalBranch(Branch):
 
     def __str__(self):
         if self.I is not None:
-            i = intelligent_output(self.I, I_table, I_k)
-            return f"Branch({self.node_left} --- {self.node_right}) I={self.I:.2f}{i[1]}"
+            v, p = get_vp(self.I)
+            i, unit = intelligent_output(v, I_table, I_k)
+            return f"Branch({self.node_left} --- {self.node_right}) I={i:.2f}∠{p:.2f}° {unit}"
         else:
             return f"Branch({self.node_left} --- {self.node_right})"
 
@@ -167,7 +185,7 @@ class ElectricalComponent(Component):
         self._U = None
         self._V1 = None
         self._V2 = None
-        self.Vref = True    # 电压参考方向，True表示左端为正，False表示右端为正
+        self.Vref = False    # 电压参考方向，True表示左端为正，False表示右端为正
         self.Iref = True    # 电流参考方向，True表示从左端流入，False表示从右端流入
 
         if prefix is None:
@@ -184,6 +202,8 @@ class ElectricalComponent(Component):
     I = property(_get_I, _set_I)    # 电流
 
     def _get_U(self):
+        if self._U is None:
+            return None
         return self._U
     def _set_U(self, V):
         self._U = V
@@ -222,10 +242,9 @@ class IndependentVoltageSource(PowerSource):
     
     def __str__(self):
         if self.U is not None:
-            value = abs(self.U)
-            phase = math.degrees(math.atan2(self.U.imag, self.U.real))
-            u = intelligent_output(value, V_table, V_k)
-            return f"{self.prefix}{self.num} U={u[0]:.2f}∠{phase}° {u[1]}"
+            v, p = get_vp(self.U)
+            u, unit = intelligent_output(v, V_table, V_k)
+            return f"{self.prefix}{self.num} U={u:.2f}∠{p:.2f}° {unit}"
         else:
             return f"{self.prefix}{self.num}"
         
@@ -241,10 +260,9 @@ class IndependentCurrentSource(PowerSource):
     
     def __str__(self):
         if self.I is not None:
-            value = abs(self.I)
-            phase = math.degrees(math.atan2(self.I.imag, self.I.real))
-            i = intelligent_output(value, I_table, I_k)
-            return f"{self.prefix}{self.num} I={i[0]:.2f}∠{phase}° {i[1]}"
+            v, p = get_vp(self.I)
+            i, unit = intelligent_output(v, I_table, I_k)
+            return f"{self.prefix}{self.num} I={i:.2f}∠{p:.2f}° {unit}"
         else:
             return f"{self.prefix}{self.num}"
     
@@ -262,7 +280,7 @@ class DependentVoltageSource(PowerSource):
     def __init__(self, branch : ElectricalBranch, prefix : str = "U"):
         super().__init__(branch, prefix)
         self.controler : ElectricalComponent = None    # 控制元件
-        self.value : str = None                        # 控制量，U 或 I
+        self.value : str = "U"                        # 控制量，U 或 I
         self.k : float = None                          # 增益系数
 
     def _get_U(self):
@@ -285,7 +303,7 @@ class DependentCurrentSource(PowerSource):
     def __init__(self, branch : ElectricalBranch, prefix : str = "I"):
         super().__init__(branch, prefix)
         self.controler : ElectricalComponent = None    # 控制元件
-        self.value : str = None                        # 控制量，U 或 I
+        self.value : str = "U"                        # 控制量，U 或 I
         self.k : float = None                          # 增益系数
     
     def _get_I(self):
@@ -322,8 +340,9 @@ class Impedance(ElectricalComponent):
 
     def __str__(self):
         if self.Z is not None:
-            z = intelligent_output(abs(self.Z), R_table, R_k)
-            return f"{self.prefix}{self.num} Z={z[0]:.2f}{z[1]}"
+            v, p = get_vp(self.Z)
+            z, unit = intelligent_output(v, R_table, R_k)
+            return f"{self.prefix}{self.num} Z={z:.2f}∠{p:.2f}° {unit}"
         else:
             return f"{self.prefix}{self.num}"
 
@@ -455,10 +474,4 @@ del b, c
 
 if __name__ == "__main__":
     # 测试
-    print("电气拓扑结构：")
-    for i in range(0, 3):
-        for j in range(i + 1, 4):
-            for b in nodes[i].branches[nodes[j]]:
-                print(b)
-                for c in b:
-                    print(c)
+    print(intelligent_output(0.001, V_table, V_k))

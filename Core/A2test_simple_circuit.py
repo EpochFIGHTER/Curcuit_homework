@@ -25,6 +25,7 @@ def build_simple_circuit():
     branch01 = ElectricalBranch(node0, node1)
     vs1 = IndependentVoltageSource(branch01)
     vs1.U = 10  # 10V电压源
+    # vs1.Vref = True
     branch01.append(vs1)
 
     # 支路2: 节点1-2，电阻

@@ -10,9 +10,14 @@
 """
 import numpy as np
 import math
-from Core.Component import ElectricalNode, ElectricalComponent, ElectricalBranch
-from Core.Component import PowerSource, IndependentVoltageSource, IndependentCurrentSource
-from Core.Component import DependentVoltageSource, DependentCurrentSource
+try:
+    from Core.Component import ElectricalNode, ElectricalComponent, ElectricalBranch
+    from Core.Component import PowerSource, IndependentVoltageSource, IndependentCurrentSource
+    from Core.Component import DependentVoltageSource, DependentCurrentSource
+except ModuleNotFoundError:
+    from Component import ElectricalNode, ElectricalComponent, ElectricalBranch
+    from Component import PowerSource, IndependentVoltageSource, IndependentCurrentSource
+    from Component import DependentVoltageSource, DependentCurrentSource
 
 def get_nodes_and_voltage_sources(nodes):
     """
@@ -71,8 +76,10 @@ def build_mna_matrix(nodes, frequency=1000):
         mapping: 未知量映射字典，记录每个未知量在解向量中的索引
     """
     # 设置电路频率
-    # from Component import set_freq
-    from Core.Component import set_freq
+    try:
+        from Core.Component import set_freq
+    except ModuleNotFoundError:
+        from Component import set_freq
     set_freq(frequency)
     
     # 获取除参考节点外的节点和所有电压源
@@ -372,13 +379,14 @@ def solve_circuit(nodes : list[ElectricalNode], frequency=1000, solver_method='a
     for i in range(len(nodes)):
         for j in range(i + 1, len(nodes)):
             branches = nodes[i].branches.get(nodes[j], [])
-            
             for branch in branches:
                 # 更新支路电压
                 v1 = node_voltages[branch.node_left]
                 v2 = node_voltages[branch.node_right]
                 branch.V1 = v1
                 branch.V2 = v2
+                I = branch_currents.get(branch, 0)
+                branch.I = I
                   # 遍历支路上的每个元件，设置电压和电流
                 for component in branch:
                     # 设置元件电压
@@ -395,9 +403,9 @@ def solve_circuit(nodes : list[ElectricalNode], frequency=1000, solver_method='a
                     # 设置元件电流
                     if not isinstance(component, (IndependentCurrentSource, DependentCurrentSource)):
                         if component.Iref:
-                            component.I = branch.I
-                        else:
                             component.I = -branch.I
+                        else:
+                            component.I = branch.I
     
     return True, node_voltages, branch_currents
 
@@ -410,8 +418,10 @@ def print_circuit_solution(nodes, node_voltages, branch_currents):
         node_voltages: 节点电压字典
         branch_currents: 支路电流字典
     """
-    # from Component import intelligent_output, V_table, V_k, I_table, I_k
-    from Core.Component import intelligent_output, V_table, V_k, I_table, I_k
+    try:
+        from Core.Component import intelligent_output, get_vp, V_table, V_k, I_table, I_k
+    except ModuleNotFoundError:
+        from Component import intelligent_output, get_vp, V_table, V_k, I_table, I_k
     
     print("\n" + "="*50)
     print(" "*15 + "四节点电路仿真结果")
@@ -420,14 +430,7 @@ def print_circuit_solution(nodes, node_voltages, branch_currents):
     # 打印节点电压
     print("\n节点电压：")
     for node, voltage in node_voltages.items():
-        if isinstance(voltage, complex):
-            mag = abs(voltage)
-            phase = math.degrees(math.atan2(voltage.imag, voltage.real))
-            v = intelligent_output(mag, V_table, V_k)
-            print(f"{node}: {v[0]:.3f}{v[1]} ∠{phase:.2f}°")
-        else:
-            v = intelligent_output(voltage, V_table, V_k)
-            print(f"{node}: {v[0]:.3f}{v[1]}")
+        print(node)
     
     # 打印支路电流
     print("\n支路电流：")
@@ -440,15 +443,10 @@ def print_circuit_solution(nodes, node_voltages, branch_currents):
                 if current is None:
                     continue
                 
-                if isinstance(current, complex):
-                    mag = abs(current)
-                    phase = math.degrees(math.atan2(current.imag, current.real))
-                    i_val = intelligent_output(mag, I_table, I_k)
-                    print(f"支路 {nodes[i]}-{nodes[j]} #{idx+1}: {i_val[0]:.3f}{i_val[1]} ∠{phase:.2f}°")
-                else:
-                    i_val = intelligent_output(current, I_table, I_k)
-                    print(f"支路 {nodes[i]}-{nodes[j]} #{idx+1}: {i_val[0]:.3f}{i_val[1]}")
-    
+                v, p = get_vp(current)
+                I, unit = intelligent_output(v, I_table, I_k)
+                print(f"支路 Node{i} --- Node{j}: {I:.3f}∠{p:.2f}° {unit}")
+
     # 打印元件信息
     print("\n元件详情：")
     for i in range(len(nodes)):

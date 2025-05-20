@@ -9,8 +9,10 @@ import Display.textstyle as textstyle
 import Display.buttonstyle as buttonstyle
 import Display.inputstyle as inputstyle
 from Display.widget import NumberInputWidget, UnitSwitchButton
+import Display.sidebar as sidebar
 
 from Core.Component import F_table, nodes
+import Core
 
 grid_size = 60
 grid_line_width = 2
@@ -204,6 +206,10 @@ freq_inputline = FreqInputLine(bottomright=(viewbox.rect.w - ProjectNameBox.HEIG
 freq_inputline.join(viewbox)
 freq_unit_switch_button = UnitSwitchButton(F_table, midleft=(freq_inputline.rect.right + freq_inputline.HEIGHT / 4, freq_inputline.rect.centery))
 freq_unit_switch_button.join(viewbox)
+freq_inputline.inputwidget.start_input()
+freq_inputline.inputwidget.textinput("1")
+freq_inputline.inputwidget.stop_input()
+freq_unit_switch_button.switch()
 
 class DiagramBoxMouuseWidget(fantas.MouseBase):
     SCALESPEED = 0.05
@@ -234,8 +240,8 @@ class DiagramBoxMouuseWidget(fantas.MouseBase):
         pos = pygame.mouse.get_pos()
         if 0 < pos[0] < viewbox.rect.w - 80 and 150 < pos[1] < viewbox.rect.h - 80:
             self.r += y * self.SCALESPEED
-            if self.r < 0.25:
-                self.r = 0.25
+            if self.r < 0.2:
+                self.r = 0.2
             elif self.r > 2:
                 self.r = 2
             # self.ui.size = (self.ui.origin_size[0] * self.r, self.ui.origin_size[1] * self.r)
@@ -245,6 +251,27 @@ class DiagramBoxMouuseWidget(fantas.MouseBase):
 
 COMPONENT_SIZE = (180, 80)
 BRANCH_WIDTH = 4
+LEFT_FLAG_POS = (40, 20)
+RIGHT_FLAG_POS = (140, 20)
+
+class DataCheckMouseWidget(fantas.MouseBase):
+    RECT = pygame.Rect((0, 150, viewbox.rect.w - 80, viewbox.rect.h - 230))
+    
+    def __init__(self, ui, component):
+        super().__init__(ui, 2)
+        self.component = component
+
+    def mousepress(self, pos, button):
+        if not sidebar.caculated_flag:
+            return
+        if button == pygame.BUTTON_LEFT:
+            rect = pygame.Rect(self.ui.rect)
+            rect.w *= diagram_box.mousewidget.r
+            rect.h *= diagram_box.mousewidget.r
+            rect.left *= diagram_box.mousewidget.r
+            rect.top *= diagram_box.mousewidget.r
+            if self.RECT.collidepoint(pygame.mouse.get_pos()) and rect.collidepoint(pos):
+                sidebar.show_data(self.component)
 
 class DiagramBox(fantas.Ui):
     def __init__(self):
@@ -262,6 +289,7 @@ class DiagramBox(fantas.Ui):
         w = max((ui.rect.right for ui in self.kidgroup), default=0)
         h = max((ui.rect.bottom for ui in self.kidgroup), default=0)
         self.img = pygame.Surface((w, h), pygame.SRCALPHA)
+        # self.img.fill((255, 255, 255, 255))
         if t < 0:
             h -= t
             # self.rect.top += t
@@ -403,6 +431,7 @@ class DiagramBox(fantas.Ui):
             if color.IS_DARKMODE:
                 img_name = "DARK_" + img_name
             i = fantas.Ui(u.images[img_name], center=(branch_line.rect.left + index * pad, branch_line.rect.centery))
+            DataCheckMouseWidget(i, c).apply_event()
             index += 1
             l = fantas.Label((130, BRANCH_WIDTH), bg=color.FAKEWHITE, center=i.rect.center)
             n = fantas.Text(f"{c.prefix}{c.num}", u.fonts['deyi'], textstyle.DARKBLUE_TITLE_3, midtop=i.rect.midbottom)
@@ -412,6 +441,123 @@ class DiagramBox(fantas.Ui):
             self.diagram_widgets.append(i)
             self.diagram_widgets.append(l)
             self.diagram_widgets.append(n)
+            if isinstance(c, Core.Resistor):
+                if c.R is not None:
+                    r, unit = Core.intelligent_output(c.R, Core.R_table, Core.R_k)
+                    d = fantas.Text(f"{r:.2f}{unit}", u.fonts['deyi'], textstyle.DARKBLUE_TITLE_3, midbottom=i.rect.midtop)
+                    d.join(diagram_box)
+                    self.diagram_widgets.append(d)
+            elif isinstance(c, Core.Capacitor):
+                if c.C is not None:
+                    r, unit = Core.intelligent_output(c.C, Core.C_table, Core.C_k)
+                    d = fantas.Text(f"{r:.2f}{unit}", u.fonts['deyi'], textstyle.DARKBLUE_TITLE_3, midbottom=i.rect.midtop)
+                    d.join(diagram_box)
+                    self.diagram_widgets.append(d)
+            elif isinstance(c, Core.Inductor):
+                if c.L is not None:
+                    r, unit = Core.intelligent_output(c.L, Core.L_table, Core.L_k)
+                    d = fantas.Text(f"{r:.2f}{unit}", u.fonts['deyi'], textstyle.DARKBLUE_TITLE_3, midbottom=i.rect.midtop)
+                    d.join(diagram_box)
+                    self.diagram_widgets.append(d)
+            elif isinstance(c, Core.Impedance):
+                if c.Z is not None:
+                    v, p = Core.get_vp(c.Z)
+                    r, unit = Core.intelligent_output(v, Core.R_table, Core.R_k)
+                    d = fantas.Text(f"{r:.2f}", u.fonts['deyi'], textstyle.DARKBLUE_TITLE_3, bottomright=i.rect.midtop)
+                    d.join(diagram_box)
+                    self.diagram_widgets.append(d)
+                    d = fantas.IconText(chr(0xe619), u.fonts['iconfont'], textstyle.DARKBLUE_TITLE_3, midleft=d.rect.midright)
+                    d.join(diagram_box)
+                    self.diagram_widgets.append(d)
+                    d = fantas.Text(f"{p:.2f}°{unit}", u.fonts['deyi'], textstyle.DARKBLUE_TITLE_3, midleft=d.rect.midright)
+                    d.join(diagram_box)
+                    self.diagram_widgets.append(d)
+            elif isinstance(c, Core.IndependentVoltageSource):
+                p = fantas.Text("+", u.fonts['deyi'], textstyle.DARKBLUE_TITLE_3)
+                n = fantas.Text("-", u.fonts['deyi'], textstyle.DARKBLUE_TITLE_3)
+                p.join(diagram_box)
+                n.join(diagram_box)
+                self.diagram_widgets.append(p)
+                self.diagram_widgets.append(n)
+                if c.Vref:
+                    p.rect.centerx = LEFT_FLAG_POS[0] + i.rect.left
+                    p.rect.centery = LEFT_FLAG_POS[1] + i.rect.top
+                    n.rect.centerx = RIGHT_FLAG_POS[0] + i.rect.left
+                    n.rect.centery = RIGHT_FLAG_POS[1] + i.rect.top
+                else:
+                    p.rect.centerx = RIGHT_FLAG_POS[0] + i.rect.left
+                    p.rect.centery = RIGHT_FLAG_POS[1] + i.rect.top
+                    n.rect.centerx = LEFT_FLAG_POS[0] + i.rect.left
+                    n.rect.centery = LEFT_FLAG_POS[1] + i.rect.top
+                if c.U is not None:
+                    v, p = Core.get_vp(c.U)
+                    U, unit = Core.intelligent_output(v, Core.V_table, Core.V_k)
+                    d = fantas.Text(f"{U:.2f}", u.fonts['deyi'], textstyle.DARKBLUE_TITLE_3, bottomright=i.rect.midtop)
+                    d.join(diagram_box)
+                    self.diagram_widgets.append(d)
+                    d = fantas.IconText(chr(0xe619), u.fonts['iconfont'], textstyle.DARKBLUE_TITLE_3, midleft=d.rect.midright)
+                    d.join(diagram_box)
+                    self.diagram_widgets.append(d)
+                    d = fantas.Text(f"{p:.2f}°{unit}", u.fonts['deyi'], textstyle.DARKBLUE_TITLE_3, midleft=d.rect.midright)
+                    d.join(diagram_box)
+                    self.diagram_widgets.append(d)
+            elif isinstance(c, Core.IndependentCurrentSource):
+                a = fantas.IconText(chr(0xe60e), u.fonts['iconfont'], textstyle.DARKBLUE_TITLE_1, centery=i.rect.centery)
+                a.join(diagram_box)
+                self.diagram_widgets.append(a)
+                if c.Iref:
+                    a.angle = 90
+                    a.rect.centerx = RIGHT_FLAG_POS[0] + i.rect.left + 10
+                else:
+                    a.angle = -90
+                    a.rect.centerx = LEFT_FLAG_POS[0] + i.rect.left - 10
+                if c.I is not None:
+                    v, p = Core.get_vp(c.I)
+                    I, unit = Core.intelligent_output(v, Core.I_table, Core.I_k)
+                    d = fantas.Text(f"{I:.2f}", u.fonts['deyi'], textstyle.DARKBLUE_TITLE_3, bottomright=i.rect.midtop)
+                    d.join(diagram_box)
+                    self.diagram_widgets.append(d)
+                    d = fantas.IconText(chr(0xe619), u.fonts['iconfont'], textstyle.DARKBLUE_TITLE_3, midleft=d.rect.midright)
+                    d.join(diagram_box)
+                    self.diagram_widgets.append(d)
+                    d = fantas.Text(f"{p:.2f}°{unit}", u.fonts['deyi'], textstyle.DARKBLUE_TITLE_3, midleft=d.rect.midright)
+                    d.join(diagram_box)
+                    self.diagram_widgets.append(d)
+            elif isinstance(c, Core.DependentVoltageSource):
+                p = fantas.Text("+", u.fonts['deyi'], textstyle.DARKBLUE_TITLE_3)
+                n = fantas.Text("-", u.fonts['deyi'], textstyle.DARKBLUE_TITLE_3)
+                p.join(diagram_box)
+                n.join(diagram_box)
+                self.diagram_widgets.append(p)
+                self.diagram_widgets.append(n)
+                if c.Vref:
+                    p.rect.centerx = LEFT_FLAG_POS[0] + i.rect.left
+                    p.rect.centery = LEFT_FLAG_POS[1] + i.rect.top
+                    n.rect.centerx = RIGHT_FLAG_POS[0] + i.rect.left
+                    n.rect.centery = RIGHT_FLAG_POS[1] + i.rect.top
+                else:
+                    p.rect.centerx = RIGHT_FLAG_POS[0] + i.rect.left
+                    p.rect.centery = RIGHT_FLAG_POS[1] + i.rect.top
+                    n.rect.centerx = LEFT_FLAG_POS[0] + i.rect.left
+                    n.rect.centery = LEFT_FLAG_POS[1] + i.rect.top
+                if c.k is not None and c.controler is not None:
+                    d = fantas.Text(f"{c.k:.2f}{c.value} ({c.controler.prefix}{c.controler.num})", u.fonts['deyi'], textstyle.DARKBLUE_TITLE_3, midbottom=i.rect.midtop)
+                    d.join(diagram_box)
+                    self.diagram_widgets.append(d)
+            elif isinstance(c, Core.DependentCurrentSource):
+                a = fantas.IconText(chr(0xe60e), u.fonts['iconfont'], textstyle.DARKBLUE_TITLE_1, centery=i.rect.centery)
+                a.join(diagram_box)
+                self.diagram_widgets.append(a)
+                if c.Iref:
+                    a.angle = 90
+                    a.rect.centerx = RIGHT_FLAG_POS[0] + i.rect.left + 10
+                else:
+                    a.angle = -90
+                    a.rect.centerx = LEFT_FLAG_POS[0] + i.rect.left - 10
+                if c.k is not None and c.controler is not None:
+                    d = fantas.Text(f"{c.k:.2f}{c.value} ({c.controler.prefix}{c.controler.num})", u.fonts['deyi'], textstyle.DARKBLUE_TITLE_3, midbottom=i.rect.midtop)
+                    d.join(diagram_box)
+                    self.diagram_widgets.append(d)
 
 diagram_box = DiagramBox()
 diagram_box.join_to(viewbox, project_name.get_index())
@@ -423,7 +569,7 @@ class NodeUi(fantas.IconText):
     def __init__(self, node_num):
         self.node_num = node_num
         super().__init__(self.numtext, u.fonts['iconfont'], textstyle.DARKBLUE_TITLE_3, center=(viewbox.rect.w * (node_num * 2 + 1) / 8, viewbox.rect.h / 2))
-        self.name = fantas.Text(f"n{node_num}", u.fonts['shuhei'], textstyle.DARKBLUE_TITLE_3, midtop=self.rect.midbottom)
+        self.name = fantas.Text(f"n{node_num}", u.fonts['shuhei'], textstyle.DARKBLUE_TITLE_3, topright=self.rect.bottomleft)
 
     def join(self, node):
         super().join(node)
