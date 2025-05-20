@@ -153,7 +153,7 @@ i = fantas.Ui(u.images['python'], midleft=(about_padding / 2, about_padding * 4 
 i.anchor = "midleft"
 i.size = (about_lineheight, about_lineheight)
 i.join(about.page)
-fantas.Text("Python 3.12.7", u.fonts['deyi'], textstyle.DARKBLUE_TITLE_3, midright=(about_padding * 7 / 2, about_padding * 4 + about_lineheight * 11)).join(about.page)
+fantas.Text("Python 3.12.10", u.fonts['deyi'], textstyle.DARKBLUE_TITLE_3, midright=(about_padding * 7 / 2, about_padding * 4 + about_lineheight * 11)).join(about.page)
 i = fantas.Ui(u.images['pygame'], midleft=(about_padding / 2, about_padding * 4 + about_lineheight * 12 - 8))
 i.anchor = "midleft"
 i.size = (about_lineheight * 214 / 60, about_lineheight)
