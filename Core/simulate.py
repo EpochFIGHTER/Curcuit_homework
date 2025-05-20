@@ -403,9 +403,9 @@ def solve_circuit(nodes : list[ElectricalNode], frequency=1000, solver_method='a
                     # 设置元件电流
                     if not isinstance(component, (IndependentCurrentSource, DependentCurrentSource)):
                         if component.Iref:
-                            component.I = -branch.I
-                        else:
                             component.I = branch.I
+                        else:
+                            component.I = -branch.I
     
     return True, node_voltages, branch_currents
 

@@ -185,7 +185,7 @@ class ElectricalComponent(Component):
         self._U = None
         self._V1 = None
         self._V2 = None
-        self.Vref = False    # 电压参考方向，True表示左端为正，False表示右端为正
+        self.Vref = True    # 电压参考方向，True表示左端为正，False表示右端为正
         self.Iref = True    # 电流参考方向，True表示从左端流入，False表示从右端流入
 
         if prefix is None:

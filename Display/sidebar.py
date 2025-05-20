@@ -667,9 +667,9 @@ class ComponentUi(fantas.Label):
         self.delete_icon = fantas.IconText(chr(0xe66b), u.fonts['iconfont'], textstyle.DARKBLUE_TITLE_4, center=(self.delete_button.rect.w / 2 - 1, self.delete_button.rect.h / 2))
         self.delete_icon.join(self.delete_button)
 
-        self.posi_flag = fantas.Text("+", u.fonts['deyi'], textstyle.DARKBLUE_TITLE_3, center=RIGHT_FLAG_POS)
+        self.posi_flag = fantas.Text("+", u.fonts['deyi'], textstyle.DARKBLUE_TITLE_3, center=LEFT_FLAG_POS)
         self.posi_flag.join(self)
-        self.nega_flag = fantas.Text("-", u.fonts['deyi'], textstyle.DARKBLUE_TITLE_3, center=LEFT_FLAG_POS)
+        self.nega_flag = fantas.Text("-", u.fonts['deyi'], textstyle.DARKBLUE_TITLE_3, center=RIGHT_FLAG_POS)
         self.nega_flag.join(self)
 
         self.posi_pos_kf = fantas.RectKeyFrame(self.posi_flag, 'center', LEFT_FLAG_POS, 10, fantas.harmonic_curve)
@@ -810,7 +810,7 @@ class IndependentVoltageSourceUi(ComponentUi):
         a = self.angle_input_box.inputwidget.get_number()
         if a is None:
             return False
-        self.component.U = cmath.rect(v / unit, math.radians(a))
+        self.component.U = cmath.rect((v if self.component.Vref else -v) / unit, math.radians(a))
         return True
 
 class IndependentCurrentSourceUi(ComponentUi):
@@ -835,7 +835,7 @@ class IndependentCurrentSourceUi(ComponentUi):
         a = self.angle_input_box.inputwidget.get_number()
         if a is None:
             return False
-        self.component.I = cmath.rect(i / unit, math.radians(a))
+        self.component.I = cmath.rect((i if self.component.Iref else -i) / unit, math.radians(a))
         return True
 
 VA_table = ("U", "I")
@@ -949,7 +949,7 @@ class CalculateButton(fantas.SmoothColorButton):
         global caculated_flag
         success, node_voltages, branch_currents = solve_circuit(nodes, solver_method=SOLVE_METHODS[self.method_num])
         if success:
-            print_circuit_solution(nodes, node_voltages, branch_currents)
+            # print_circuit_solution(nodes, node_voltages, branch_currents)
             self.add_text(f">>> {SOLVE_METHODS[self.method_num]} 方法求解成功")
             self.title_text.text = "求解已完成！"
             self.title_text.update_img()
@@ -1006,8 +1006,8 @@ def show_data(component : Core.ElectricalComponent):
 
     v, p = Core.get_vp(branch.node_left.V)
     v, unit = Core.intelligent_output(v, Core.V_table, Core.V_k)
-    if v != 0:
-        v = -v
+    # if v != 0:
+    #     v = -v
     nodeleft_data_text.text = f"左节点：Node{branch.node_left.num}       {v:.2f}"
     nodeleft_data_text.update_img()
     nlda_text.rect.left = nodeleft_data_text.rect.right + 10
@@ -1023,8 +1023,8 @@ def show_data(component : Core.ElectricalComponent):
         
     v, p = Core.get_vp(branch.node_right.V)
     v, unit = Core.intelligent_output(v, Core.V_table, Core.V_k)
-    if v != 0:
-        v = -v
+    # if v != 0:
+    #     v = -v
     noderight_data_text.text = f"右节点：Node{branch.node_right.num}       {v:.2f}"
     noderight_data_text.update_img()
     nrda_text.rect.left = noderight_data_text.rect.right + 10
@@ -1069,8 +1069,8 @@ def show_data(component : Core.ElectricalComponent):
     
     v, p = Core.get_vp(component.U)
     v, unit = Core.intelligent_output(v, Core.V_table, Core.V_k)
-    if v != 0:
-        v = -v
+    # if v != 0:
+    #     v = -v
     U_data_text.text = f"电压：{v:.2f}"
     U_data_text.update_img()
     Ua_text.rect.left = U_data_text.rect.right + 10
@@ -1086,6 +1086,8 @@ def show_data(component : Core.ElectricalComponent):
 
     i, p = Core.get_vp(component.I)
     i, unit = Core.intelligent_output(i, Core.I_table, Core.I_k)
+    # if component.Iref:
+    #     i = -i
     I_data_text.text = f"电流：{i:.2f}"
     I_data_text.update_img()
     Ia_text.rect.left = I_data_text.rect.right + 10
