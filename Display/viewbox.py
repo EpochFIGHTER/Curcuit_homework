@@ -449,8 +449,8 @@ switch_color_icon = fantas.IconText(chr(0xe959 if color.IS_DARKMODE else 0xe76b)
 switch_color_icon.join(switch_color_button)
 
 def switch_color():
-    color.switch_dark_mode()
-    if color.IS_DARKMODE:
+    u.settings['DARK_MODE'] = not u.settings['DARK_MODE']
+    if u.settings['DARK_MODE']:
         switch_color_icon.text = chr(0xe959)
     else:
         switch_color_icon.text = chr(0xe76b)

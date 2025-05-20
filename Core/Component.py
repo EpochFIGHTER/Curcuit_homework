@@ -222,8 +222,10 @@ class IndependentVoltageSource(PowerSource):
     
     def __str__(self):
         if self.U is not None:
-            u = intelligent_output(self.U, V_table, V_k)
-            return f"{self.prefix}{self.num} U={u[0]:.2f}{u[1]}"
+            value = abs(self.U)
+            phase = math.degrees(math.atan2(self.U.imag, self.U.real))
+            u = intelligent_output(value, V_table, V_k)
+            return f"{self.prefix}{self.num} U={u[0]:.2f}∠{phase}° {u[1]}"
         else:
             return f"{self.prefix}{self.num}"
         
@@ -239,8 +241,10 @@ class IndependentCurrentSource(PowerSource):
     
     def __str__(self):
         if self.I is not None:
-            i = intelligent_output(self.I, I_table, I_k)
-            return f"{self.prefix}{self.num} I={i[0]:.2f}{i[1]}"
+            value = abs(self.I)
+            phase = math.degrees(math.atan2(self.I.imag, self.I.real))
+            i = intelligent_output(value, I_table, I_k)
+            return f"{self.prefix}{self.num} I={i[0]:.2f}∠{phase}° {i[1]}"
         else:
             return f"{self.prefix}{self.num}"
     

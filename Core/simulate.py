@@ -71,6 +71,7 @@ def build_mna_matrix(nodes, frequency=1000):
         mapping: 未知量映射字典，记录每个未知量在解向量中的索引
     """
     # 设置电路频率
+    # from Component import set_freq
     from Core.Component import set_freq
     set_freq(frequency)
     
@@ -155,7 +156,7 @@ def build_mna_matrix(nodes, frequency=1000):
                         b[i_idx] -= I  # 流入节点i的电流为负
                     if j_idx is not None:
                         b[j_idx] += I  # 流出节点j的电流为正
-    
+
     # 处理电压源约束（B和C子矩阵）
     for idx, (branch, vsrc) in enumerate(voltage_sources):
         # 电压源支路的两个节点
@@ -409,6 +410,7 @@ def print_circuit_solution(nodes, node_voltages, branch_currents):
         node_voltages: 节点电压字典
         branch_currents: 支路电流字典
     """
+    # from Component import intelligent_output, V_table, V_k, I_table, I_k
     from Core.Component import intelligent_output, V_table, V_k, I_table, I_k
     
     print("\n" + "="*50)
