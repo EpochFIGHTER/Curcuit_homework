@@ -138,7 +138,8 @@ i.size = (about_padding * 3, about_padding * 3)
 i.join(about.page)
 
 fantas.Text("三独立节点电路通用", u.fonts['shuhei'], textstyle.DARKBLUE_TITLE_3, midleft=(about_padding / 2, about_padding * 4)).join(about.page)
-fantas.Text("正弦稳态电路分析器 V0.9", u.fonts['shuhei'], textstyle.DARKBLUE_TITLE_3, midleft=(about_padding / 2, about_padding * 4 + about_lineheight)).join(about.page)
+fantas.Text("正弦稳态电路分析器", u.fonts['shuhei'], textstyle.DARKBLUE_TITLE_3, midleft=(about_padding / 2, about_padding * 4 + about_lineheight)).join(about.page)
+fantas.Text("V0.9.1", u.fonts['shuhei'], textstyle.DARKBLUE_TITLE_4, bottomright=(about.page.rect.w - about_padding / 2, about.page.kidgroup[-1].rect.bottom - 2)).join(about.page)
 fantas.Label((about_padding * 3, 10), bg=color.DEEPWHITE, center=(about.page.rect.w / 2, about_padding * 4 + about_lineheight * 2)).join(about.page)
 fantas.Text("山东大学 2024-2025 学年", u.fonts['shuhei'], textstyle.DARKBLUE_TITLE_4, midleft=(about_padding / 2, about_padding * 4 + about_lineheight * 3)).join(about.page)
 fantas.Text("24级 电路课程设计作业", u.fonts['shuhei'], textstyle.DARKBLUE_TITLE_4, midleft=(about_padding / 2, about_padding * 4 + about_lineheight * 4)).join(about.page)
@@ -372,6 +373,7 @@ class AddBranchButton(fantas.SmoothColorButton):
     def add_choose_node(self, node1, node2):
         BranchUi(node1, node2)
         self.hide_choose_branch()
+        change_data()
 
     def show_choose_branch(self):
         self.ban()
@@ -480,6 +482,7 @@ class BranchUi(fantas.Label):
         self.branch.node_left.branches[self.branch.node_right].remove(self.branch)
         self.branch.node_right.branches[self.branch.node_left].remove(self.branch)
         viewbox.diagram_box.update()
+        change_data()
 
 class AddComponentMouseWidget(fantas.MouseBase):
     def __init__(self, ui):
@@ -600,6 +603,7 @@ class ChooseComponentButton(fantas.SmoothColorButton):
         self.father.hide_choose_component()
         branch_list.add_height(c.MAX_HEIGHT + LISTPADDING)
         branch_list.move(self.branchui.get_index() + 1, c.MAX_HEIGHT + LISTPADDING)
+        change_data()
 
 LEFT_FLAG_POS = (30, 20)
 RIGHT_FLAG_POS = (130, 20)
@@ -709,6 +713,7 @@ class ComponentUi(fantas.Label):
         self.father.kidgroup[index - 1].top_kf.value, self.father.kidgroup[index].top_kf.value = self.father.kidgroup[index].top_kf.value, self.father.kidgroup[index - 1].top_kf.value
         self.father.kidgroup[index - 1].top_kf.launch('continue')
         self.father.kidgroup[index].top_kf.launch('continue')
+        change_data()
 
     def movedown(self):
         index = self.component.get_index()
@@ -720,6 +725,7 @@ class ComponentUi(fantas.Label):
         self.father.kidgroup[index + 1].top_kf.value, self.father.kidgroup[index].top_kf.value = self.father.kidgroup[index].top_kf.value, self.father.kidgroup[index + 1].top_kf.value
         self.father.kidgroup[index + 1].top_kf.launch('continue')
         self.father.kidgroup[index].top_kf.launch('continue')
+        change_data()
 
     def delete(self):
         self.father.add_height(self.MAX_HEIGHT - self.size_kf.value[1])
@@ -731,6 +737,7 @@ class ComponentUi(fantas.Label):
         self.branchui.size_kf.launch('continue')
         branch_list.add_height(-self.MAX_HEIGHT - LISTPADDING)
         branch_list.move(self.branchui.get_index() + 1, -self.MAX_HEIGHT - LISTPADDING)
+        change_data()
 
     def switch_Vref(self):
         self.component.Vref = not self.component.Vref

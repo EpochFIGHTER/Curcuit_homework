@@ -387,26 +387,42 @@ def solve_circuit(nodes : list[ElectricalNode], frequency=1000, solver_method='a
                 branch.V2 = v2
                 I = branch_currents.get(branch, 0)
                 branch.I = I
-                  # 遍历支路上的每个元件，设置电压和电流
+                
+                # 计算支路中串联元件的总阻抗
+                total_impedance = complex(0, 0)
                 for component in branch:
-                    # 设置元件电压
-                    component.V1 = v1
-                    component.V2 = v2
-                    
+                    if hasattr(component, 'Z') and component.Z is not None and not isinstance(component, (DependentVoltageSource, IndependentVoltageSource)):
+                        total_impedance += component.Z
+                
+                # 计算每个元件的电压和电流
+                current_v = v1  # 当前电压点
+                for component in branch:
+                    if total_impedance != complex(0, 0) and hasattr(component, 'Z') and component.Z is not None and not isinstance(component, (DependentVoltageSource, IndependentVoltageSource)):
+                        # 计算电压降
+                        voltage_drop = (v1 - v2) * (component.Z / total_impedance)
+                        component.V1 = current_v
+                        component.V2 = current_v - voltage_drop
+                        current_v -= voltage_drop  # 更新当前电压点
+                    else:
+                        # 对于电源和其他特殊元件，使用支路端电压
+                        component.V1 = v1
+                        component.V2 = v2
+
+                    # 保持原有代码对特殊元件的处理逻辑
                     # 只为非受控电压源设置电压值
                     if not isinstance(component, DependentVoltageSource):
                         if component.Vref:
-                            component.U = v1 - v2
+                            component.U = component.V1 - component.V2
                         else:
-                            component.U = v2 - v1
-                    
+                            component.U = component.V2 - component.V1
+
                     # 设置元件电流
                     if not isinstance(component, (IndependentCurrentSource, DependentCurrentSource)):
                         if component.Iref:
                             component.I = branch.I
                         else:
                             component.I = -branch.I
-    
+
     return True, node_voltages, branch_currents
 
 def print_circuit_solution(nodes, node_voltages, branch_currents):

@@ -3,13 +3,24 @@ os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = ''
 import sys
 import time
 from pathlib import Path
-DEBUG = False
+
+DEBUG = True
 if DEBUG:
     std_path = Path('run.log').open("a", encoding='utf-8', errors='ignore')
     sys.stdout = std_path
     sys.stderr = std_path
     print("=" * 20 + "START" + "=" * 20)
     print("Time: ", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))    
+
+import ctypes
+# 设置DPI感知
+try:
+    ctypes.windll.shcore.SetProcessDpiAwareness(2)
+except:
+    try:
+        ctypes.windll.user32.SetProcessDPIAware()
+    except:
+        pass
 
 import pygame
 
@@ -19,13 +30,10 @@ from fantas import uimanager as u
 settings_path = Path(".settings")
 u.settings = fantas.load(settings_path)
 
-
 import Display.color as color
-# import Display.textstyle as textstyle
-# import Display.buttonstyle as buttonstyle
 
-# import Display.launch as launch
-# launch.show_start_window(2500)    # 启动窗口
+import Display.launch as launch
+launch.show_start_window(2000)    # 启动窗口
 
 info = pygame.display.Info()
 if info.current_w == 1920 and info.current_h == 1080:

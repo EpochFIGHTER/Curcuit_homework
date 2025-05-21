@@ -101,6 +101,7 @@ class ProjectNameBox(fantas.InputLine):
         self.anchor = 'right'
 
     def set_text(self, text):
+        self.clear()
         self.inputwidget.start_input()
         self.inputwidget.textinput(text)
         self.inputwidget.stop_input()
@@ -143,7 +144,13 @@ export_icon = fantas.IconText(chr(0xe622), u.fonts['iconfont'], textstyle.DARKBL
 export_icon.join(export_button)
 
 def build_new_diagram():
-    pass
+    project_name.set_text("新建电路图")
+    for b in list(sidebar.branch_list.kidgroup):
+        if isinstance(b, sidebar.BranchUi):
+            b.delete()
+    sidebar.branch_list.top_kf.value = 0
+    sidebar.branch_list.top_kf.launch("continue")
+    adapt()
 
 buildnew_button = fantas.SmoothColorButton((ProjectNameBox.HEIGHT, ProjectNameBox.HEIGHT), buttonstyle.common_button_style, 2, radius={'border_radius': 16}, midleft=(export_button.rect.right + project_name.PADDING, project_name.rect.centery))
 buildnew_button.bind(build_new_diagram)
@@ -306,19 +313,24 @@ class DiagramBox(fantas.Ui):
             [0, False, 0],
             [0, False, 0],
         )    # 记录绘制空间占用情况
+
         distance = [viewbox.rect.w / 4, viewbox.rect.w / 4, viewbox.rect.w / 4]    # 节点之间的距离
-        for i in range(3):
-            node1 = nodes[0]
-            node2 = nodes[i + 1]
-            for b in node1.branches.get(node2, []):
-                distance[i] = max(distance[i], COMPONENT_SIZE[0] * len(b))
-        for i in range(2):
-            node1 = nodes[i]
-            node2 = nodes[i + 2]
-            for b in node1.branches.get(node2, []):
-                distance[i + 1] = max(distance[i + 1], COMPONENT_SIZE[0] * len(b) - distance[i])
-        for b in nodes[0].branches.get(nodes[3], []):
-            distance[2] = max(distance[2], COMPONENT_SIZE[0] * len(b) - distance[0] - distance[1])
+        l = max((len(b) for b in nodes[0].branches.get(nodes[1], [])), default=0) + 1
+        if l > 1:
+            distance[0] = l * COMPONENT_SIZE[0]
+        l = max((len(b) for b in nodes[1].branches.get(nodes[2], [])), default=0) + 1
+        if l > 1:
+            distance[1] = l * COMPONENT_SIZE[0]
+        l = max((len(b) for b in nodes[0].branches.get(nodes[2], [])), default=0) + 1
+        distance[1] = max(COMPONENT_SIZE[0] * l - distance[0], distance[1])
+        l = max((len(b) for b in nodes[2].branches.get(nodes[3], [])), default=0) + 1
+        if l > 1:
+            distance[2] = l * COMPONENT_SIZE[0]
+        l = max((len(b) for b in nodes[1].branches.get(nodes[3], [])), default=0) + 1
+        distance[2] = max(COMPONENT_SIZE[0] * l - distance[1], distance[2])
+        l = max((len(b) for b in nodes[0].branches.get(nodes[3], [])), default=0) + 1
+        distance[2] = max(COMPONENT_SIZE[0] * l - distance[0] - distance[1], distance[2])
+
         for i in range(3):
             nodeuis[i + 1].rect.centerx = nodeuis[i].rect.centerx + distance[i]
             nodeuis[i + 1].name.rect.topright = nodeuis[i + 1].rect.bottomleft
