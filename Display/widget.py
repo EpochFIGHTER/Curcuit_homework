@@ -47,3 +47,7 @@ class UnitSwitchButton(fantas.SmoothColorButton):
         self.text.text = self.unit_table[self.unit]
         self.text.update_img()
         self.mark_update()
+    
+    def switch_to(self, unit_num):
+        while self.unit != unit_num:
+            self.switch()

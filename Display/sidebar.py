@@ -371,9 +371,10 @@ class AddBranchButton(fantas.SmoothColorButton):
         self.top_kf = fantas.RectKeyFrame(self, 'top', self.rect.top, 10, fantas.harmonic_curve)
 
     def add_choose_node(self, node1, node2):
-        BranchUi(node1, node2)
+        b = BranchUi(node1, node2)
         self.hide_choose_branch()
         change_data()
+        return b
 
     def show_choose_branch(self):
         self.ban()
@@ -415,7 +416,7 @@ class BranchUi(fantas.Label):
     PADDING = 10
 
     def __init__(self, node1, node2):
-        super().__init__((PAGEWIDTH - LISTPADDING * 2, 0), 2, color.LIGHTGREEN, color.GRAY, radius={'border_radius': 16}, midtop=(PAGEWIDTH / 2, add_branch_button.rect.top))
+        super().__init__((PAGEWIDTH - LISTPADDING * 2, 0), 2, color.LIGHTGREEN, color.GRAY, radius={'border_radius': 16}, midtop=(PAGEWIDTH / 2, add_branch_button.top_kf.value))
         self.anchor = 'midtop'
 
         self.size_kf = fantas.LabelKeyFrame(self, 'size', (PAGEWIDTH - LISTPADDING * 2, self.INIT_HEIGHT), 10, fantas.harmonic_curve)
@@ -483,6 +484,20 @@ class BranchUi(fantas.Label):
         self.branch.node_right.branches[self.branch.node_left].remove(self.branch)
         viewbox.diagram_box.update()
         change_data()
+    
+    def info(self):
+        data = []
+        for c in self.component_list.kidgroup:
+            if isinstance(c, ComponentUi):
+                data.append(c.info())
+        return data
+
+    def init_from_info(self, info):
+        for i in info:
+            self.add_component_button.show_choose_component()
+            c = self.add_component_button.choose_components[i[0]].add_component()
+            c.init_from_info(i)
+        self.fold()
 
 class AddComponentMouseWidget(fantas.MouseBase):
     def __init__(self, ui):
@@ -596,7 +611,7 @@ class ChooseComponentButton(fantas.SmoothColorButton):
         self.bind(self.add_component)
 
     def add_component(self):
-        c = COMPONENTUI_CLASS[self.num](self.branchui, self.num, topleft=(LISTPADDING, self.branchui.add_component_button.rect.top))
+        c = COMPONENTUI_CLASS[self.num](self.branchui, self.num, topleft=(LISTPADDING, self.branchui.add_component_button.top_kf.value))
         c.join_to(self.branchui.component_list, -1)
         c.branchui.size_kf.value = (c.branchui.size_kf.value[0], c.branchui.size_kf.value[1] + c.MAX_HEIGHT + LISTPADDING)
         c.branchui.size_kf.launch('continue')
@@ -604,6 +619,7 @@ class ChooseComponentButton(fantas.SmoothColorButton):
         branch_list.add_height(c.MAX_HEIGHT + LISTPADDING)
         branch_list.move(self.branchui.get_index() + 1, c.MAX_HEIGHT + LISTPADDING)
         change_data()
+        return c
 
 LEFT_FLAG_POS = (30, 20)
 RIGHT_FLAG_POS = (130, 20)
@@ -760,6 +776,16 @@ class ComponentUi(fantas.Label):
     
     def set_data(self):
         return False
+    
+    def info(self):
+        return [self.component.num, self.component.Vref, self.component.Iref]
+    
+    def init_from_info(self, info):
+        self.component.num = info[-3]
+        if info[-2] != self.component.Vref:
+            self.switch_Vref()
+        if info[-1] != self.component.Iref:
+            self.switch_Iref()
 
 class ResistorUi(ComponentUi):
     def __init__(self, branchui, num, **anchor):
@@ -777,7 +803,14 @@ class ResistorUi(ComponentUi):
             return False
         self.component.R = r / unit
         return True
+    
+    def info(self):
+        return [0, self.value_input_box.get_input(), self.value_unit_box.unit] + super().info()
 
+    def init_from_info(self, info):
+        super().init_from_info(info)
+        self.value_input_box.set_input(info[1])
+        self.value_unit_box.switch_to(info[2])
 
 class CapacitorUi(ComponentUi):
     def __init__(self, branchui, num, **anchor):
@@ -796,6 +829,14 @@ class CapacitorUi(ComponentUi):
         self.component.C = c / unit
         return True
 
+    def info(self):
+        return [1, self.value_input_box.get_input(), self.value_unit_box.unit] + super().info()
+
+    def init_from_info(self, info):
+        super().init_from_info(info)
+        self.value_input_box.set_input(info[1])
+        self.value_unit_box.switch_to(info[2])
+
 class InductorUi(ComponentUi):
     def __init__(self, branchui, num, **anchor):
         super().__init__(branchui, num, **anchor)
@@ -812,6 +853,14 @@ class InductorUi(ComponentUi):
             return False
         self.component.L = l / unit
         return True
+
+    def info(self):
+        return [2, self.value_input_box.get_input(), self.value_unit_box.unit] + super().info()
+    
+    def init_from_info(self, info):
+        super().init_from_info(info)
+        self.value_input_box.set_input(info[1])
+        self.value_unit_box.switch_to(info[2])
 
 class ImpedanceUi(ComponentUi):
     def __init__(self, branchui, num, **anchor):
@@ -836,6 +885,15 @@ class ImpedanceUi(ComponentUi):
             return False
         self.component.Z = cmath.rect(z / unit, math.radians(a))
         return True
+    
+    def info(self):
+        return [3, self.value_input_box.get_input(), self.value_unit_box.unit, self.angle_input_box.get_input()] + super().info()
+    
+    def init_from_info(self, info):
+        super().init_from_info(info)
+        self.value_input_box.set_input(info[1])
+        self.value_unit_box.switch_to(info[2])
+        self.angle_input_box.set_input(info[3])
 
 class IndependentVoltageSourceUi(ComponentUi):
     def __init__(self, branchui, num, **anchor):
@@ -861,6 +919,15 @@ class IndependentVoltageSourceUi(ComponentUi):
             return False
         self.component.U = cmath.rect((v if self.component.Vref else -v) / unit, math.radians(a))
         return True
+    
+    def info(self):
+        return [4, self.value_input_box.get_input(), self.value_unit_box.unit, self.angle_input_box.get_input()] + super().info()
+    
+    def init_from_info(self, info):
+        super().init_from_info(info)
+        self.value_input_box.set_input(info[1])
+        self.value_unit_box.switch_to(info[2])
+        self.angle_input_box.set_input(info[3])
 
 class IndependentCurrentSourceUi(ComponentUi):
     def __init__(self, branchui, num, **anchor):
@@ -886,6 +953,15 @@ class IndependentCurrentSourceUi(ComponentUi):
             return False
         self.component.I = cmath.rect((i if self.component.Iref else -i) / unit, math.radians(a))
         return True
+    
+    def info(self):
+        return [5, self.value_input_box.get_input(), self.value_unit_box.unit, self.angle_input_box.get_input()] + super().info()
+    
+    def init_from_info(self, info):
+        super().init_from_info(info)
+        self.value_input_box.set_input(info[1])
+        self.value_unit_box.switch_to(info[2])
+        self.angle_input_box.set_input(info[3])
 
 VA_table = ("U", "I")
 
@@ -920,6 +996,15 @@ class DependentVoltageSourceUi(ComponentUi):
             return False
         self.component.k = k
         return True
+    
+    def info(self):
+        return [6, self.value_input_box.get_input(), self.value_unit_box.unit, self.control_component_input_box.get_input()] + super().info()
+    
+    def init_from_info(self, info):
+        super().init_from_info(info)
+        self.value_input_box.set_input(info[1])
+        self.value_unit_box.switch_to(info[2])
+        self.control_component_input_box.set_input(info[3])
 
 class DependentCurrentSourceUi(ComponentUi):
     def __init__(self, branchui, num, **anchor):
@@ -944,6 +1029,15 @@ class DependentCurrentSourceUi(ComponentUi):
             return False
         self.component.k = k
         return True
+    
+    def info(self):
+        return [7, self.value_input_box.get_input(), self.value_unit_box.unit, self.control_component_input_box.get_input()] + super().info()
+    
+    def init_from_info(self, info):
+        super().init_from_info(info)
+        self.value_input_box.set_input(info[1])
+        self.value_unit_box.switch_to(info[2])
+        self.control_component_input_box.set_input(info[3])
 
 COMPONENTUI_CLASS = (ResistorUi, CapacitorUi, InductorUi, ImpedanceUi, IndependentVoltageSourceUi, IndependentCurrentSourceUi, DependentVoltageSourceUi, DependentCurrentSourceUi)
 caculated_flag = False

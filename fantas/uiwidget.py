@@ -600,7 +600,14 @@ class InputLine(fantas.Label):
         self.editing = False
         if self.tiptext is not None and self.tiptext.father is None:
             self.tiptext.join(self)
-            
+    
+    def set_input(self, text):
+        # 设置当前输入
+        self.clear()
+        self.inputwidget.start_input()
+        self.inputwidget.textinput(text)
+        self.inputwidget.stop_input()
+
 '''
 
 

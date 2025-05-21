@@ -32,7 +32,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    manifest='main.exe.manifest',
+    manifest='电路分析器.exe.manifest',
     icon=['C:\\Python\\22.电路小组作业\\icon.ico'],
 )
 coll = COLLECT(

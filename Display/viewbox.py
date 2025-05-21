@@ -1,5 +1,6 @@
+from tkinter.filedialog import askopenfilename, asksaveasfilename
 import pygame
-# from pathlib import Path
+from pathlib import Path
 
 import fantas
 from fantas import uimanager as u
@@ -126,7 +127,19 @@ edit_icon = fantas.IconText(chr(0xe601), u.fonts['iconfont'], textstyle.DARKBLUE
 edit_icon.join(edit_name_button)
 
 def import_diagram():
-    pass
+    file_path = askopenfilename(defaultextension=".pcd", filetypes=[("电路图文件", "*.pcd")], title="导入电路图")
+    if file_path:
+        file_path = Path(file_path)
+    else:
+        return
+    build_new_diagram(file_path.stem)
+    data = fantas.load(file_path)
+    for n in data:
+        sidebar.add_branch_button.show_choose_branch()
+        b = sidebar.add_branch_button.add_choose_node(n[0], n[1])
+        b.init_from_info(n[2:])
+    sidebar.change_data()
+    adapt() 
 
 import_button = fantas.SmoothColorButton((ProjectNameBox.HEIGHT, ProjectNameBox.HEIGHT), buttonstyle.common_button_style, 2, radius={'border_radius': 16}, midleft=(edit_name_button.rect.right + project_name.PADDING, project_name.rect.centery)) 
 import_button.bind(import_diagram)
@@ -135,7 +148,14 @@ import_icon = fantas.IconText(chr(0xe65d), u.fonts['iconfont'], textstyle.DARKBL
 import_icon.join(import_button)
 
 def export_diagram():
-    pass
+    file_path = asksaveasfilename(defaultextension=".pcd", filetypes=[("电路图文件", "*.pcd")], initialfile=project_name.get_input(), title="保存电路图")
+    if file_path:
+        file_path = Path(file_path)
+    else:
+        return
+    project_name.set_text(file_path.stem)
+    data = [ [b.branch.node_left.num, b.branch.node_right.num] + b.info() for b in sidebar.branch_list.kidgroup if isinstance(b, sidebar.BranchUi) ]
+    fantas.dump(data, file_path)
 
 export_button = fantas.SmoothColorButton((ProjectNameBox.HEIGHT, ProjectNameBox.HEIGHT), buttonstyle.common_button_style, 2, radius={'border_radius': 16}, midleft=(import_button.rect.right + project_name.PADDING, project_name.rect.centery))
 export_button.bind(export_diagram)
@@ -143,13 +163,14 @@ export_button.join(viewbox)
 export_icon = fantas.IconText(chr(0xe622), u.fonts['iconfont'], textstyle.DARKBLUE_TITLE_2, center=(export_button.rect.w/2, export_button.rect.h/2))
 export_icon.join(export_button)
 
-def build_new_diagram():
-    project_name.set_text("新建电路图")
+def build_new_diagram(name="新建电路图"):
+    project_name.set_text(name)
     for b in list(sidebar.branch_list.kidgroup):
         if isinstance(b, sidebar.BranchUi):
             b.delete()
     sidebar.branch_list.top_kf.value = 0
     sidebar.branch_list.top_kf.launch("continue")
+    sidebar.change_data()
     adapt()
 
 buildnew_button = fantas.SmoothColorButton((ProjectNameBox.HEIGHT, ProjectNameBox.HEIGHT), buttonstyle.common_button_style, 2, radius={'border_radius': 16}, midleft=(export_button.rect.right + project_name.PADDING, project_name.rect.centery))
