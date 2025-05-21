@@ -3,7 +3,7 @@ os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = ''
 import sys
 import time
 from pathlib import Path
-DEBUG = True
+DEBUG = False
 if DEBUG:
     std_path = Path('run.log').open("a", encoding='utf-8', errors='ignore')
     sys.stdout = std_path
@@ -24,8 +24,8 @@ import Display.color as color
 # import Display.textstyle as textstyle
 # import Display.buttonstyle as buttonstyle
 
-import Display.launch as launch
-launch.show_start_window(2500)    # 启动窗口
+# import Display.launch as launch
+# launch.show_start_window(2500)    # 启动窗口
 
 info = pygame.display.Info()
 if info.current_w == 1920 and info.current_h == 1080:

@@ -1,3 +1,4 @@
+import sys
 import math
 import cmath
 import pygame
@@ -193,7 +194,7 @@ class BranchList(fantas.Label):
         self.top_kf = fantas.RectKeyFrame(self, 'top', 0, 10, fantas.slower_curve)
         self.mousewidget = BranchListMouseWidget(self)
         self.mousewidget.apply_event()
-        self.size_kf = fantas.LabelKeyFrame(self, 'size', (PAGEWIDTH, LISTPADDING * 2), 10, fantas.slower_curve)
+        self.size_kf = fantas.LabelKeyFrame(self, 'size', (PAGEWIDTH, LISTPADDING * 2), 10, fantas.faster_curve)
 
     def append(self, node):
         super().append(node)
@@ -216,6 +217,12 @@ class BranchList(fantas.Label):
             k.top_kf.launch('continue')
 
     def add_height(self, height):
+        if height > 0:
+            self.size_kf.totalframe = 2
+            self.size_kf.curve = fantas.faster_curve
+        else:
+            self.size_kf.totalframe = 20
+            self.size_kf.curve = fantas.slower_curve
         self.size_kf.value = (self.size_kf.value[0], self.size_kf.value[1] + height)
         self.size_kf.launch('continue')
 
@@ -229,7 +236,7 @@ class ComponentList(fantas.Label):
         self.top_kf = fantas.RectKeyFrame(self, 'top', 0, 10, fantas.slower_curve)
         # self.mousewidget = BranchListMouseWidget(self)
         # self.mousewidget.apply_event()
-        self.size_kf = fantas.LabelKeyFrame(self, 'size', (PAGEWIDTH - LISTPADDING * 2, 0), 10, fantas.slower_curve)
+        self.size_kf = fantas.LabelKeyFrame(self, 'size', (PAGEWIDTH - LISTPADDING * 2, 0), 10, fantas.faster_curve)
 
     def append(self, node):
         super().append(node)
@@ -252,6 +259,12 @@ class ComponentList(fantas.Label):
             k.top_kf.launch('continue')
 
     def add_height(self, height):
+        if height > 0:
+            self.size_kf.totalframe = 2
+            self.size_kf.curve = fantas.faster_curve
+        else:
+            self.size_kf.totalframe = 20
+            self.size_kf.curve = fantas.slower_curve
         self.size_kf.value = (self.size_kf.value[0], self.size_kf.value[1] + height)
         self.size_kf.launch('continue')
 
@@ -461,7 +474,12 @@ class BranchUi(fantas.Label):
         self.size_kf.bind_endupwith(None)
 
     def delete(self):
-        pass
+        branch_list.add_height(self.MAX_HEIGHT - self.size_kf.value[1])
+        branch_list.move(self.get_index() + 1, -self.size_kf.value[1] - LISTPADDING)
+        self.leave()
+        self.branch.node_left.branches[self.branch.node_right].remove(self.branch)
+        self.branch.node_right.branches[self.branch.node_left].remove(self.branch)
+        viewbox.diagram_box.update()
 
 class AddComponentMouseWidget(fantas.MouseBase):
     def __init__(self, ui):
@@ -682,13 +700,37 @@ class ComponentUi(fantas.Label):
         ComponentUiIconMouseWidget(self.icon).apply_event()
 
     def moveup(self):
-        pass
+        index = self.component.get_index()
+        if index == 0:
+            return
+        self.component.move_left()
+        viewbox.diagram_box.update()
+        self.father.kidgroup[index - 1], self.father.kidgroup[index] = self.father.kidgroup[index], self.father.kidgroup[index - 1]
+        self.father.kidgroup[index - 1].top_kf.value, self.father.kidgroup[index].top_kf.value = self.father.kidgroup[index].top_kf.value, self.father.kidgroup[index - 1].top_kf.value
+        self.father.kidgroup[index - 1].top_kf.launch('continue')
+        self.father.kidgroup[index].top_kf.launch('continue')
 
     def movedown(self):
-        pass
+        index = self.component.get_index()
+        if index == len(self.component.branch) - 1:
+            return
+        self.component.move_right()
+        viewbox.diagram_box.update()
+        self.father.kidgroup[index + 1], self.father.kidgroup[index] = self.father.kidgroup[index], self.father.kidgroup[index + 1]
+        self.father.kidgroup[index + 1].top_kf.value, self.father.kidgroup[index].top_kf.value = self.father.kidgroup[index].top_kf.value, self.father.kidgroup[index + 1].top_kf.value
+        self.father.kidgroup[index + 1].top_kf.launch('continue')
+        self.father.kidgroup[index].top_kf.launch('continue')
 
     def delete(self):
-        pass
+        self.father.add_height(self.MAX_HEIGHT - self.size_kf.value[1])
+        self.father.move(self.get_index() + 1, -self.size_kf.value[1] - LISTPADDING)
+        self.leave()
+        self.component.branch.remove(self.component)
+        viewbox.diagram_box.update()
+        self.branchui.size_kf.value = (self.branchui.size_kf.value[0], self.branchui.size_kf.value[1] - self.MAX_HEIGHT - LISTPADDING)
+        self.branchui.size_kf.launch('continue')
+        branch_list.add_height(-self.MAX_HEIGHT - LISTPADDING)
+        branch_list.move(self.branchui.get_index() + 1, -self.MAX_HEIGHT - LISTPADDING)
 
     def switch_Vref(self):
         self.component.Vref = not self.component.Vref
