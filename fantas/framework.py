@@ -166,21 +166,19 @@ class UiManager:
         return d
 
     def set_cursor(self, shape):
-        pass
-        # self.cursor_stack.append(self.cursor_map[shape])
-        # pygame.mouse.set_cursor(self.cursor_map[shape])
+        self.cursor_stack.append(self.cursor_map[shape])
+        pygame.mouse.set_cursor(self.cursor_map[shape])
 
     def set_cursor_back(self):
-        pass
-        # if not self.cursor_stack:
-        # 	self.cursor_stack.append(self.cursor_map['^'])
-        # pygame.mouse.set_cursor(self.cursor_stack[-1])
+        self.cursor_stack.pop()
+        if not self.cursor_stack:
+            self.cursor_stack.append(self.cursor_map['^'])
+        pygame.mouse.set_cursor(self.cursor_stack[-1])
 
     def clear_cursor_stack(self):
-        pass
-        # while self.cursor_stack:
-        # 	self.cursor_stack.pop()
-        # self.set_cursor('^')
+        while self.cursor_stack:
+            self.cursor_stack.pop()
+        self.set_cursor('^')
 
 
 uimanager = UiManager()

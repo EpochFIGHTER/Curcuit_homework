@@ -29,16 +29,18 @@ class SidebarPageMouseWidget(fantas.MouseBase):
     def mousein(self):
         if not self.ui.poped and not self.ui.pre_poped:
             self.ui.pre_pop()
+            u.set_cursor('hand')
 
     def mouseout(self):
         if not self.ui.poped and self.ui.pre_poped:
             self.ui.back()
+            u.set_cursor_back()
     
     def mouseclick(self):
         if self.mousedown == pygame.BUTTON_LEFT:
             if not self.ui.poped:
                 self.ui.pop()
-
+                u.set_cursor_back()
 
 class SidebarPage(fantas.Label):
     WIDTH = 40
@@ -168,7 +170,10 @@ i.join(about.page)
 fantas.Text("Numpy 2.2.5", u.fonts['deyi'], textstyle.DARKBLUE_TITLE_3, midright=(about_padding * 7 / 2, about_padding * 4 + about_lineheight * 13)).join(about.page)
 fantas.Label((about_padding * 3, 10), bg=color.DEEPWHITE, center=(about.page.rect.w / 2, about_padding * 4 + about_lineheight * 14)).join(about.page)
 fantas.IconText(chr(0xe85a), u.fonts['iconfont'], textstyle.DARKBLUE_TITLE_3, midleft=(about_padding / 2, about_padding * 4 + about_lineheight * 15)).join(about.page)
-fantas.WebURL("Github仓库", "https://github.com/EpochFIGHTER/Curcuit_homework", u.fonts['deyi'], textstyle.DARKBLUE_TITLE_3, midleft=(about_padding / 2 + about_lineheight, about_padding * 4 + about_lineheight * 15)).join(about.page)
+fantas.WebURL("源代码仓库", "https://github.com/EpochHIT/Curcuit_homework", u.fonts['deyi'], textstyle.DARKBLUE_TITLE_3, midleft=(about_padding / 2 + about_lineheight, about_padding * 4 + about_lineheight * 15)).join(about.page)
+fantas.HoverMessage(about.page.kidgroup[-1], "https://github.com/Epoch...", u.hover_message_box).apply_event()
+fantas.WebURL("软件发布页", "https://github.com/EpochHIT/Curcuit_homework/releases", u.fonts['deyi'], textstyle.DARKBLUE_TITLE_3, midright=(about.page.rect.w - about_padding / 2, about_padding * 4 + about_lineheight * 15)).join(about.page)
+fantas.HoverMessage(about.page.kidgroup[-1], "https://github.com/Epoch...", u.hover_message_box).apply_event()
 
 
 PAGEWIDTH = u.WIDTH / 4
@@ -387,6 +392,7 @@ class AddBranchButton(fantas.SmoothColorButton):
         for i in self.choose_nodes:
             i.join(self)
         branch_list.add_height(self.MAX_HEIGHT)
+        add_branch_button_hover.cancel_event()
 
     def hide_choose_branch(self):
         self.status = 0
@@ -398,6 +404,7 @@ class AddBranchButton(fantas.SmoothColorButton):
         for i in self.choose_nodes:
             i.leave()
         branch_list.add_height(-self.MAX_HEIGHT)
+        add_branch_button_hover.apply_event()
 
     def ban(self):
         super().ban()
@@ -409,6 +416,8 @@ class AddBranchButton(fantas.SmoothColorButton):
 
 add_branch_button = AddBranchButton(midtop=(PAGEWIDTH / 2, LISTPADDING))
 add_branch_button.join(branch_list)
+add_branch_button_hover = fantas.HoverMessage(add_branch_button, "添加支路", u.hover_message_box)
+add_branch_button_hover.apply_event()
 
 class BranchUi(fantas.Label):
     INIT_HEIGHT = 80
@@ -437,6 +446,7 @@ class BranchUi(fantas.Label):
         self.unfold_icon.angle = 90
         self.unfold_icon.join(self.unfold_button)
         self.unfold_icon_angle_kf = fantas.UiKeyFrame(self.unfold_icon, 'angle',90, 10, fantas.harmonic_curve)
+        fantas.HoverMessage(self.unfold_button, "展开/折叠", u.hover_message_box).apply_event()
 
         self.title_text = fantas.Text(f"n{node1.num} --- n{node2.num}", u.fonts['shuhei'], textstyle.DARKBLUE_TITLE_3, center=(self.rect.w / 2, self.unfold_button.rect.centery))
         self.title_text.join(self)
@@ -446,10 +456,13 @@ class BranchUi(fantas.Label):
         self.delete_button.bind(self.delete)
         self.delete_icon = fantas.IconText(chr(0xe66b), u.fonts['iconfont'], textstyle.DARKBLUE_TITLE_3, center=(self.delete_button.rect.w / 2, self.delete_button.rect.h / 2))
         self.delete_icon.join(self.delete_button)
+        fantas.HoverMessage(self.delete_button, "删除支路", u.hover_message_box).apply_event()
 
         self.component_list = ComponentList(midtop=(self.rect.w / 2, self.INIT_HEIGHT))
         self.add_component_button = AddComponentButton(self, midtop=(self.rect.w / 2, self.PADDING))
         self.add_component_button.join(self.component_list)
+        self.add_component_button_hover = fantas.HoverMessage(self.add_component_button, "添加元件", u.hover_message_box)
+        self.add_component_button_hover.apply_event()
         self.unfold()
 
     def unfold(self):
@@ -546,6 +559,7 @@ class AddComponentButton(fantas.SmoothColorButton):
         self.branchui.size_kf.launch('continue')
         branch_list.add_height(self.MAX_HEIGHT)
         branch_list.move(self.branchui.get_index() + 1, self.MAX_HEIGHT)
+        self.branchui.add_component_button_hover.cancel_event()
 
     def hide_choose_component(self):
         self.status = 0
@@ -561,6 +575,7 @@ class AddComponentButton(fantas.SmoothColorButton):
         self.branchui.size_kf.launch('continue')
         branch_list.add_height(-self.MAX_HEIGHT)
         branch_list.move(self.branchui.get_index() + 1, -self.MAX_HEIGHT)
+        self.branchui.add_component_button_hover.apply_event()
 
     def ban(self):
         super().ban()
@@ -687,6 +702,7 @@ class ComponentUi(fantas.Label):
         self.icon.join(self)
         self.icon_name = fantas.Text(f"{self.component.prefix}{self.component.num}", u.fonts['deyi'], textstyle.DARKBLUE_TITLE_3, center=(self.MAX_HEIGHT / 2, self.MAX_HEIGHT * 3 / 4))
         self.icon_name.join(self)
+        fantas.HoverMessage(self.icon, "切换参考方向", u.hover_message_box).apply_event()
 
         self.moveup_button = fantas.SmoothColorButton((self.MAX_HEIGHT / 4, self.MAX_HEIGHT / 4), buttonstyle.common_button_style, 2, radius={'border_radius': self.MAX_HEIGHT // 8}, center=(self.size_kf.value[0] - self.MAX_HEIGHT / 4, self.MAX_HEIGHT / 5))
         self.moveup_button.bind(self.moveup)
@@ -694,16 +710,19 @@ class ComponentUi(fantas.Label):
         self.moveup_icon = fantas.IconText(chr(0xe60e), u.fonts['iconfont'], textstyle.DARKBLUE_TITLE_3, center=(self.moveup_button.rect.w / 2, self.moveup_button.rect.h / 2))
         self.moveup_icon.angle = 180
         self.moveup_icon.join(self.moveup_button)
+        fantas.HoverMessage(self.moveup_button, "上移元件", u.hover_message_box).apply_event()
         self.movedown_button = fantas.SmoothColorButton((self.MAX_HEIGHT / 4, self.MAX_HEIGHT / 4), buttonstyle.common_button_style, 2, radius={'border_radius': self.MAX_HEIGHT // 8}, center=(self.size_kf.value[0] - self.MAX_HEIGHT / 4, self.MAX_HEIGHT * 4 / 5))
         self.movedown_button.bind(self.movedown)
         self.movedown_button.join(self)
         self.movedown_icon = fantas.IconText(chr(0xe60e), u.fonts['iconfont'], textstyle.DARKBLUE_TITLE_3, center=(self.movedown_button.rect.w / 2, self.movedown_button.rect.h / 2))
         self.movedown_icon.join(self.movedown_button)
+        fantas.HoverMessage(self.movedown_button, "下移元件", u.hover_message_box).apply_event()
         self.delete_button = fantas.SmoothColorButton((self.MAX_HEIGHT / 4, self.MAX_HEIGHT / 4), buttonstyle.warn_button_style, 2, radius={'border_radius': self.MAX_HEIGHT // 8}, center=(self.size_kf.value[0] - self.MAX_HEIGHT / 4, self.MAX_HEIGHT / 2))
         self.delete_button.bind(self.delete)
         self.delete_button.join(self)
         self.delete_icon = fantas.IconText(chr(0xe66b), u.fonts['iconfont'], textstyle.DARKBLUE_TITLE_4, center=(self.delete_button.rect.w / 2 - 1, self.delete_button.rect.h / 2))
         self.delete_icon.join(self.delete_button)
+        fantas.HoverMessage(self.delete_button, "删除元件", u.hover_message_box).apply_event()
 
         self.posi_flag = fantas.Text("+", u.fonts['deyi'], textstyle.DARKBLUE_TITLE_3, center=LEFT_FLAG_POS)
         self.posi_flag.join(self)
@@ -795,6 +814,7 @@ class ResistorUi(ComponentUi):
         self.value_input_box.join(self)
         self.value_unit_box = ComponentUnitSwitchButton(Core.R_table, 1, midleft=(self.value_input_box.rect.right + 10, self.value_input_box.rect.centery))
         self.value_unit_box.join(self)
+        fantas.HoverMessage(self.value_unit_box, "切换单位", u.hover_message_box).apply_event()
     
     def set_data(self):
         r = self.value_input_box.inputwidget.get_number()
@@ -820,6 +840,7 @@ class CapacitorUi(ComponentUi):
         self.value_input_box.join(self)
         self.value_unit_box = ComponentUnitSwitchButton(Core.C_table, 2, midleft=(self.value_input_box.rect.right + 10, self.value_input_box.rect.centery))
         self.value_unit_box.join(self)
+        fantas.HoverMessage(self.value_unit_box, "切换单位", u.hover_message_box).apply_event()
     
     def set_data(self):
         c = self.value_input_box.inputwidget.get_number()
@@ -845,6 +866,7 @@ class InductorUi(ComponentUi):
         self.value_input_box.join(self)
         self.value_unit_box = ComponentUnitSwitchButton(Core.L_table, 1, midleft=(self.value_input_box.rect.right + 10, self.value_input_box.rect.centery))
         self.value_unit_box.join(self)
+        fantas.HoverMessage(self.value_unit_box, "切换单位", u.hover_message_box).apply_event()
 
     def set_data(self):
         l = self.value_input_box.inputwidget.get_number()
@@ -870,6 +892,7 @@ class ImpedanceUi(ComponentUi):
         self.value_input_box.join(self)
         self.value_unit_box = ComponentUnitSwitchButton(Core.R_table, 1, midleft=(self.value_input_box.rect.right + 10, self.value_input_box.rect.centery))
         self.value_unit_box.join(self)
+        fantas.HoverMessage(self.value_unit_box, "切换单位", u.hover_message_box).apply_event()
         self.angle_input_box = fantas.InputLine((100, 40), u.fonts['deyi'], inputstyle.small_style, textstyle.DARKBLUE_TITLE_4, "阻抗角", 32, ComponentUiInputWidget, bd=2, sc=color.GRAY, bg=color.LIGHTWHITE, radius={ 'border_radius': 12 }, midleft=(self.MAX_HEIGHT + 20, self.MAX_HEIGHT * 2 / 3))
         self.angle_input_box.join(self)
         fantas.IconText(chr(0xe619), u.fonts['iconfont'], textstyle.DARKBLUE_TITLE_3, midright=(self.angle_input_box.rect.left - 8, self.angle_input_box.rect.centery)).join(self)
@@ -904,6 +927,7 @@ class IndependentVoltageSourceUi(ComponentUi):
         self.value_input_box.join(self)
         self.value_unit_box = ComponentUnitSwitchButton(Core.V_table, 1, midleft=(self.value_input_box.rect.right + 10, self.value_input_box.rect.centery))
         self.value_unit_box.join(self)
+        fantas.HoverMessage(self.value_unit_box, "切换单位", u.hover_message_box).apply_event()
         self.angle_input_box = fantas.InputLine((100, 40), u.fonts['deyi'], inputstyle.small_style, textstyle.DARKBLUE_TITLE_4, "相位角", 32, ComponentUiInputWidget, bd=2, sc=color.GRAY, bg=color.LIGHTWHITE, radius={ 'border_radius': 12 }, midleft=(self.MAX_HEIGHT + 20, self.MAX_HEIGHT * 2 / 3))
         self.angle_input_box.join(self)
         fantas.IconText(chr(0xe619), u.fonts['iconfont'], textstyle.DARKBLUE_TITLE_3, midright=(self.angle_input_box.rect.left - 8, self.angle_input_box.rect.centery)).join(self)
@@ -938,6 +962,7 @@ class IndependentCurrentSourceUi(ComponentUi):
         self.value_input_box.join(self)
         self.value_unit_box = ComponentUnitSwitchButton(Core.I_table, 2, midleft=(self.value_input_box.rect.right + 10, self.value_input_box.rect.centery))
         self.value_unit_box.join(self)
+        fantas.HoverMessage(self.value_unit_box, "切换单位", u.hover_message_box).apply_event()
         self.angle_input_box = fantas.InputLine((100, 40), u.fonts['deyi'], inputstyle.small_style, textstyle.DARKBLUE_TITLE_4, "相位角", 32, ComponentUiInputWidget, bd=2, sc=color.GRAY, bg=color.LIGHTWHITE, radius={ 'border_radius': 12 }, midleft=(self.MAX_HEIGHT + 20, self.MAX_HEIGHT * 2 / 3))
         self.angle_input_box.join(self)
         fantas.IconText(chr(0xe619), u.fonts['iconfont'], textstyle.DARKBLUE_TITLE_3, midright=(self.angle_input_box.rect.left - 8, self.angle_input_box.rect.centery)).join(self)
@@ -981,6 +1006,7 @@ class DependentVoltageSourceUi(ComponentUi):
         self.value_input_box.join(self)
         self.value_unit_box = ComponentUnitSwitchButton(VA_table, 0, midleft=(self.value_input_box.rect.right + 10, self.value_input_box.rect.centery))
         self.value_unit_box.join(self)
+        fantas.HoverMessage(self.value_unit_box, "切换控制量", u.hover_message_box).apply_event()
 
         fantas.Text("控制元件", u.fonts['deyi'], textstyle.DARKBLUE_TITLE_4, midleft=(self.MAX_HEIGHT, self.MAX_HEIGHT / 3)).join(self)
         self.control_component_input_box = fantas.InputLine((80, 40), u.fonts['deyi'], inputstyle.small_style, textstyle.DARKBLUE_TITLE_4, maxinput=8, inputwidget=ControlComponentInputWidget, bd=2, sc=color.GRAY, bg=color.LIGHTWHITE, radius={ 'border_radius': 12 }, midleft=(self.MAX_HEIGHT * 1.5, self.MAX_HEIGHT / 3))
@@ -1014,6 +1040,7 @@ class DependentCurrentSourceUi(ComponentUi):
         self.value_input_box.join(self)
         self.value_unit_box = ComponentUnitSwitchButton(VA_table, 0, midleft=(self.value_input_box.rect.right + 10, self.value_input_box.rect.centery))
         self.value_unit_box.join(self)
+        fantas.HoverMessage(self.value_unit_box, "切换控制量", u.hover_message_box).apply_event()
 
         fantas.Text("控制元件", u.fonts['deyi'], textstyle.DARKBLUE_TITLE_4, midleft=(self.MAX_HEIGHT, self.MAX_HEIGHT / 3)).join(self)
         self.control_component_input_box = fantas.InputLine((80, 40), u.fonts['deyi'], inputstyle.small_style, textstyle.DARKBLUE_TITLE_4, maxinput=8, inputwidget=ControlComponentInputWidget, bd=2, sc=color.GRAY, bg=color.LIGHTWHITE, radius={ 'border_radius': 12 }, midleft=(self.MAX_HEIGHT * 1.5, self.MAX_HEIGHT / 3))
@@ -1063,12 +1090,18 @@ class CalculateButton(fantas.SmoothColorButton):
         self.load_icon_angle_kf.bind_endupwith(self.load)
 
         self.size_kf = fantas.LabelKeyFrame(self, 'size', (PAGEWIDTH - LISTPADDING * 2, self.HEIGHT), 10, fantas.harmonic_curve)
+        self.centerx_kf = fantas.RectKeyFrame(self, 'centerx', self.rect.centerx + 40, 10, fantas.sin_curve)
+        self.color_kf = fantas.LabelKeyFrame(self, 'bg', color.RED, 60, fantas.parabola1)
+        self.start_centerx = self.rect.centerx
+        self.start_color = self.bg
+        self.color_kf.bind_endupwith(self.after_shake)
 
         self.text_temp = []
 
     def calculate(self):
         f = viewbox.freq_inputline.inputwidget.get_number()
         if f is None:
+            self.shake()
             return
         Core.set_freq(f)
         for b in branch_list.kidgroup:
@@ -1076,6 +1109,7 @@ class CalculateButton(fantas.SmoothColorButton):
                 for c in b.component_list.kidgroup:
                     if isinstance(c, ComponentUi):
                         if not c.set_data():
+                            self.shake()
                             return
         self.ban()
         self.title_text_color_kf.value = color.FAKEWHITE
@@ -1099,6 +1133,8 @@ class CalculateButton(fantas.SmoothColorButton):
             self.load_icon.leave()
             caculated_flag = True
             fantas.Trigger(self.clear_text).launch(90)
+            if tip_text.is_root():
+                tip_text.join_to(analysis.page, -1)
             return
         else:
             self.add_text(f">>> {SOLVE_METHODS[self.method_num]} 方法求解失败")
@@ -1138,6 +1174,18 @@ class CalculateButton(fantas.SmoothColorButton):
             self.title_text_color_kf.value = color.DARKBLUE
             self.title_text_color_kf.launch('continue')
             self.recover()
+    
+    def shake(self):
+        self.ban()
+        self.title_text.text = "请检查电路数据是否缺失"
+        self.title_text.update_img()
+        self.centerx_kf.launch(start=self.start_centerx)
+        self.color_kf.launch(start=self.feedback_bg.value)
+
+    def after_shake(self):
+        self.recover()
+        self.title_text.text = "求解电路"
+        self.title_text.update_img()
 
 def show_data(component : Core.ElectricalComponent):
     global component_img
@@ -1247,7 +1295,9 @@ def show_data(component : Core.ElectricalComponent):
 calculate_button = CalculateButton(midtop=(PAGEWIDTH / 2, LISTPADDING))
 calculate_button.join(analysis.page)
 
-branch_data_text = fantas.Text("所在支路：", u.fonts['deyi'], textstyle.DARKBLUE_TITLE_3_5, midleft=(LISTPADDING, calculate_button.rect.bottom + LISTPADDING + 48))
+tip_text = fantas.Text(">>> 点击图中元件查看求解数据 <<<", u.fonts['deyi'], textstyle.DARKBLUE_TITLE_3_5, midleft=(LISTPADDING, calculate_button.rect.bottom + LISTPADDING + 48))
+
+branch_data_text = fantas.Text("所在支路：", u.fonts['deyi'], textstyle.DARKBLUE_TITLE_3_5, midleft=(LISTPADDING, tip_text.rect.bottom + LISTPADDING + 48))
 branch_data_text.anchor = 'midleft'
 
 nodeleft_data_text = fantas.Text("左节点：", u.fonts['deyi'], textstyle.DARKBLUE_TITLE_3_5, midleft=(LISTPADDING, branch_data_text.rect.bottom + LISTPADDING))

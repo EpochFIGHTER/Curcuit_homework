@@ -125,6 +125,7 @@ edit_name_button.bind(project_name.inputwidget.start_input)
 edit_name_button.join(viewbox)
 edit_icon = fantas.IconText(chr(0xe601), u.fonts['iconfont'], textstyle.DARKBLUE_TITLE_2, center=(edit_name_button.rect.w/2, edit_name_button.rect.h/2))
 edit_icon.join(edit_name_button)
+fantas.HoverMessage(edit_name_button, "编辑电路图名称", u.hover_message_box).apply_event()
 
 def import_diagram():
     file_path = askopenfilename(defaultextension=".pcd", filetypes=[("电路图文件", "*.pcd")], title="导入电路图")
@@ -146,6 +147,7 @@ import_button.bind(import_diagram)
 import_button.join(viewbox)
 import_icon = fantas.IconText(chr(0xe65d), u.fonts['iconfont'], textstyle.DARKBLUE_TITLE_2, center=(import_button.rect.w/2, import_button.rect.h/2))
 import_icon.join(import_button)
+fantas.HoverMessage(import_button, "导入电路图", u.hover_message_box).apply_event()
 
 def export_diagram():
     file_path = asksaveasfilename(defaultextension=".pcd", filetypes=[("电路图文件", "*.pcd")], initialfile=project_name.get_input(), title="保存电路图")
@@ -162,6 +164,7 @@ export_button.bind(export_diagram)
 export_button.join(viewbox)
 export_icon = fantas.IconText(chr(0xe622), u.fonts['iconfont'], textstyle.DARKBLUE_TITLE_2, center=(export_button.rect.w/2, export_button.rect.h/2))
 export_icon.join(export_button)
+fantas.HoverMessage(export_button, "导出电路图", u.hover_message_box).apply_event()
 
 def build_new_diagram(name="新建电路图"):
     project_name.set_text(name)
@@ -178,6 +181,7 @@ buildnew_button.bind(build_new_diagram)
 buildnew_button.join(viewbox)
 buildnew_icon = fantas.IconText(chr(0xe60f), u.fonts['iconfont'], textstyle.DARKBLUE_TITLE_2, center=(buildnew_button.rect.w/2, buildnew_button.rect.h/2))
 buildnew_icon.join(buildnew_button)
+fantas.HoverMessage(buildnew_button, "新建电路图", u.hover_message_box).apply_event()
 
 def adapt():
     diagram_box.mousewidget.r = 1
@@ -194,6 +198,7 @@ adapt_button.bind(adapt)
 adapt_button.join(viewbox)
 adapt_icon = fantas.IconText(chr(0xe64d), u.fonts['iconfont'], textstyle.DARKBLUE_TITLE_2, center=(adapt_button.rect.w/2, adapt_button.rect.h/2))
 adapt_icon.join(adapt_button)
+fantas.HoverMessage(adapt_button, "回退至初始大小和位置", u.hover_message_box).apply_event()
 
 class FreqInputLineWidget(NumberInputWidget):
     def stop_input(self):
@@ -238,6 +243,8 @@ freq_inputline.inputwidget.start_input()
 freq_inputline.inputwidget.textinput("1")
 freq_inputline.inputwidget.stop_input()
 freq_unit_switch_button.switch()
+fantas.HoverMessage(freq_unit_switch_button, "切换单位", u.hover_message_box).apply_event()
+
 
 class DiagramBoxMouuseWidget(fantas.MouseBase):
     SCALESPEED = 0.05
@@ -626,6 +633,7 @@ switch_color_button = fantas.SmoothColorButton((ProjectNameBox.HEIGHT, ProjectNa
 switch_color_button.join(viewbox)
 switch_color_icon = fantas.IconText(chr(0xe959 if color.IS_DARKMODE else 0xe76b), u.fonts['iconfont'], textstyle.DARKBLUE_TITLE_2, center=(switch_color_button.rect.w/2, switch_color_button.rect.h/2))
 switch_color_icon.join(switch_color_button)
+fantas.HoverMessage(switch_color_button, "切换颜色模式（重启后生效）", u.hover_message_box).apply_event()
 
 def switch_color():
     u.settings['DARK_MODE'] = not u.settings['DARK_MODE']

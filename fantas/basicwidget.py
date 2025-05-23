@@ -219,7 +219,7 @@ class TextInputBase(Widget):
 		# start下次输入文本的位置
 		pass
 # '''
-'''
+# '''
 class HoverMessage(MouseBase):
 	# 悬浮提示弹窗组件
 	# 多个组件可以共享一个<HoverMessageBox>
@@ -248,5 +248,4 @@ class HoverMessage(MouseBase):
 		super().cancel_event()
 		self.mouseon = False
 		self.mouseout()
-
 # '''

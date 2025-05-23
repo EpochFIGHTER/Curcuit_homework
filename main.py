@@ -29,8 +29,10 @@ from fantas import uimanager as u
 
 settings_path = Path(".settings")
 u.settings = fantas.load(settings_path)
+# u.settings['version'] = "V1.0.1"
 
 import Display.color as color
+import Display.textstyle as textstyle
 
 import Display.launch as launch
 launch.show_start_window(2000)    # 启动窗口
@@ -42,6 +44,8 @@ else:
     u.init((1920, 1080), r=1, flags=pygame.SRCALPHA | pygame.HWSURFACE)
 u.images = fantas.load_res_group(Path('res/image/').iterdir())
 u.fonts = fantas.load_res_group(Path('res/font/').iterdir())
+
+u.hover_message_box = fantas.HoverMessageBox(6, 30, u.fonts['deyi'], textstyle.DARKBLUE_TITLE_5, bg=color.LIGHTBLUE, sc=color.DARKBLUE, bd=2, radius={'border_radius': 8})
 
 pygame.display.set_caption('电路分析器')
 pygame.display.set_icon(u.images['icon'])

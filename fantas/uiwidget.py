@@ -72,6 +72,8 @@ class ColorButton(fantas.Label):
 
     def ban(self):
         # 禁用按钮
+        if self.mousewidget.mouseon:
+            u.set_cursor_back()
         self.is_banned = True
         self.mousewidget.cancel_event()
         if self.shortcut is not None:
@@ -423,10 +425,12 @@ class WebURL_Widget(fantas.AnyButton):
         self.ui.style['style'] += pygame.freetype.STYLE_UNDERLINE
         self.ui.update_img()
         self.ui.style['style'] -= pygame.freetype.STYLE_UNDERLINE
+        u.set_cursor("hand")
 
     def mouseout(self):
         u.set_cursor_back()
         self.ui.update_img()
+        u.set_cursor_back()
 
 
 # ==============================

@@ -71,7 +71,7 @@ class Trigger(KeyFrame):
 	# 函数触发器
 	# 使用KeyFrame的记帧功能实现
 
-	__slots__ = ['totaltime']
+	__slots__ = []
 
 	def __init__(self, func = None, *args, **kwargs):
 		super().__init__(None)
@@ -81,9 +81,7 @@ class Trigger(KeyFrame):
 	def launch(self, time=None):
 		# 启动触发器
 		# time参数可临时指定触发时间
-		if time is None:
-			self.totalframe = self.totaltime
-		else:
+		if time is not None:
 			self.totalframe = time
 		super().launch()
 		return self
